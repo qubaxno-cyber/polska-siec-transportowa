@@ -1,0 +1,2532 @@
+<!DOCTYPE html>
+<html lang="pl" id="html-root" class="theme-light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polska Sieć Transportowa - Tycoon PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html.theme-light { background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 50%, #dbeafe 100%); color: #1e293b; }
+        html.theme-light body { background: transparent; }
+        html.theme-light .app-card { background-color: rgba(255, 255, 255, 0.95); border-color: #cbd5e1; color: #1e293b; }
+        html.theme-light header { background-color: rgba(255, 255, 255, 0.85); border-color: #e2e8f0; }
+        html.theme-light header h1, html.theme-light header div, html.theme-light span:not(.text-emerald-600):not(.text-rose-600) { color: #1e293b; }
+        html.theme-light input, html.theme-light select, html.theme-light textarea { background-color: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+        html.theme-light table { color: #1e293b; }
+        html.theme-light .theme-switcher-box { background-color: #f1f5f9; border-color: #cbd5e1; }
+
+        html.theme-honey { background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 50%, #fef9c3 100%); color: #451a03; }
+        html.theme-honey body { background: transparent; }
+        html.theme-honey .app-card { background-color: rgba(255, 253, 235, 0.95); border-color: #fde68a; color: #451a03; }
+        html.theme-honey header { background-color: rgba(254, 243, 199, 0.9); border-color: #fcd34d; }
+        html.theme-honey header h1, html.theme-honey header div, html.theme-honey span:not(.text-emerald-600):not(.text-rose-600) { color: #451a03; }
+        html.theme-honey input, html.theme-honey select, html.theme-honey textarea { background-color: #fffbeb; color: #451a03; border-color: #fcd34d; }
+        html.theme-honey table { color: #451a03; }
+        html.theme-honey .theme-switcher-box { background-color: #fef3c7; border-color: #fcd34d; }
+
+        html.theme-dark { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #090d16 100%); color: #f1f5f9; }
+        html.theme-dark body { background: transparent; }
+        html.theme-dark .app-card { background-color: rgba(30, 41, 59, 0.9) !important; border-color: rgba(51, 65, 85, 0.8) !important; color: #f1f5f9 !important; }
+        html.theme-dark header { background-color: rgba(15, 23, 42, 0.9) !important; border-color: rgba(51, 65, 85, 0.8) !important; }
+        html.theme-dark header h1, html.theme-dark header div, html.theme-dark span:not(.text-emerald-400):not(.text-emerald-600):not(.text-rose-400):not(.text-rose-600) { color: #f1f5f9 !important; }
+        html.theme-dark input, html.theme-dark select, html.theme-dark textarea { background-color: #0f172a !important; color: #fff !important; border-color: #334155 !important; }
+        html.theme-dark table tr:hover { background-color: rgba(51, 65, 85, 0.4) !important; }
+        html.theme-dark table { color: #f1f5f9; }
+        html.theme-dark .theme-switcher-box { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
+        #map { z-index: 10; }
+    </style>
+</head>
+<body class="min-h-screen font-sans transition-colors duration-300">
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <div id="offline-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="app-card w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-4 border">
+            <div class="text-center space-y-2">
+                <div class="inline-block p-3 bg-amber-100 text-amber-700 rounded-2xl shadow-inner text-3xl">
+                    <i class="fa-solid fa-business-time"></i>
+                </div>
+                <h2 class="text-xl font-extrabold">Podsumowanie okresu Offline</h2>
+                <p id="offline-summary-text" class="text-xs opacity-75">Gdy Cię nie było, Twoja sieć transportowa cały czas pracowała.</p>
+            </div>
+            <button onclick="closeOfflineModal()" class="w-full py-3 bg-amber-600 text-white font-bold rounded-xl text-xs shadow">Odbierz zarobki i kontynuuj</button>
+        </div>
+    </div>
+
+    <div id="auth-screen" class="fixed inset-0 bg-slate-900/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="app-card w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-6 border">
+            <div class="text-center space-y-2">
+                <div class="inline-block p-3 bg-amber-100 text-amber-700 rounded-2xl shadow-inner text-3xl">
+                    <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <h2 class="text-2xl font-extrabold">System Autoryzacji</h2>
+                <p class="text-xs opacity-75">Wykryto zapisane firmy lub zaloguj się na nowe konto</p>
+            </div>
+            
+            <div id="saved-accounts-section" class="space-y-2 hidden">
+                <label class="block font-bold text-xs text-amber-600">Wykryte zapisane firmy w przeglądarce:</label>
+                <div id="saved-accounts-list" class="space-y-1.5 max-h-32 overflow-y-auto"></div>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold mb-1">Twój Nick (Login)</label>
+                    <input type="text" id="auth-username" placeholder="np. Qubax" class="w-full px-4 py-2.5 border rounded-xl text-sm outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Hasło</label>
+                    <input type="password" id="auth-password" placeholder="••••••••" class="w-full px-4 py-2.5 border rounded-xl text-sm outline-none">
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2.5">
+                <button onclick="handleLoginOrRegister()" class="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl shadow-lg transition text-sm">
+                    Zaloguj się / Zarejestruj
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="setup-screen" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="app-card w-full max-w-xl rounded-2xl shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto border">
+            <div class="text-center space-y-2">
+                <div class="inline-block p-3 bg-amber-100 text-amber-700 rounded-2xl shadow-inner text-3xl">
+                    <i class="fa-solid fa-train-subway"></i>
+                </div>
+                <h2 class="text-2xl font-extrabold">Załóż swoją firmę transportową</h2>
+                <p class="text-xs opacity-75">Główny Zarządca / Administrator Sieci Transportowej w Polsce</p>
+            </div>
+            
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold mb-1">Nazwa firmy</label>
+                    <input type="text" id="setup-company-name" value="Qubax Transport" class="w-full px-4 py-2 border rounded-xl text-sm outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block font-bold mb-1">Profil działalności</label>
+                    <select id="setup-profile" class="w-full px-3 py-2 border rounded-xl text-sm font-semibold outline-none transition">
+                        <option value="urban">Transport Miejski [Start: 992,500 PLN + Pojazdy + Bonus]</option>
+                        <option value="rail">Kolej / Pociągi [Start: 992,500 PLN + EN57 + Bonus]</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-bold mb-1">Wyszukaj miasto bazowe</label>
+                    <input type="text" id="city-search-input" oninput="filterCities()" placeholder="np. Warszawa, Chełm, Poznań..." class="w-full px-4 py-2 border rounded-xl text-sm mb-2 outline-none transition">
+                    <div id="city-select-container" class="max-h-40 overflow-y-auto border rounded-xl divide-y text-sm bg-white text-slate-800"></div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <button onclick="startTycoonGame()" class="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl shadow-lg transition text-sm">
+                    Rozpocznij zarządzać siecią!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden min-h-screen flex flex-col">
+        <header class="backdrop-blur-md shadow-sm border-b sticky top-0 z-45 transition-colors">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-xl shadow-md">
+                        <i class="fa-solid fa-bus text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 id="header-company-name" class="font-bold text-base leading-tight">Firma</h1>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span id="header-profile-badge" class="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full shadow-sm">Profil</span>
+                            <span id="header-city-name" class="text-xs opacity-75 font-medium">Miasto</span>
+                            <span id="header-user-badge" class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full">Użytkownik</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div class="theme-switcher-box flex items-center p-1 rounded-2xl border shadow-inner text-xs font-bold gap-1">
+                        <button onclick="setTheme('light')" class="px-2 py-1 rounded-xl transition" title="Tryb Klasyczny">☀️</button>
+                        <button onclick="setTheme('honey')" class="px-2 py-1 rounded-xl transition" title="Tryb Miodowy">🍯</button>
+                        <button onclick="setTheme('dark')" class="px-2 py-1 rounded-xl transition" title="Tryb Ciemny">🌙</button>
+                    </div>
+
+                    <div class="app-card px-4 py-2 rounded-2xl border shadow-inner flex items-center space-x-3">
+                        <div>
+                            <div class="text-[10px] opacity-75 font-extrabold uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-clock text-amber-500"></i> Czas gry</div>
+                            <div id="game-clock" class="font-extrabold text-amber-600 text-sm">06:00</div>
+                        </div>
+                        <div class="h-8 w-px opacity-20 bg-current"></div>
+                        <div>
+                            <div class="text-[10px] opacity-75 font-extrabold uppercase tracking-wider">Saldo</div>
+                            <div id="company-balance" class="font-extrabold text-emerald-600 text-sm">0 PLN</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-4 flex border-t opacity-90 space-x-1 text-sm font-semibold overflow-x-auto">
+                <button onclick="switchTab('map')" class="tab-btn px-4 py-2.5 border-b-2 border-amber-600 text-amber-600 flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-map"></i><span>Mapa i Infrastruktura</span></button>
+                <button onclick="switchTab('lines')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-route"></i><span>Linie i Rozkłady</span></button>
+                <button onclick="switchTab('depots')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-warehouse"></i><span>Zajezdnie i Tabor</span></button>
+                <button onclick="switchTab('tickets')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-ticket"></i><span>Cennik Biletów</span></button>
+                <button onclick="switchTab('depot')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-shop"></i><span>Katalog Pojazdów</span></button>
+                <button onclick="switchTab('market')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-store"></i><span>Rynek Wtórny</span></button>
+                <button onclick="switchTab('finances')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-wallet"></i><span>Finanse</span></button>
+                <button onclick="switchTab('finance')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-building-columns"></i><span>Bank i Administracja</span></button>
+                <button onclick="switchTab('expansion')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap transition"><i class="fa-solid fa-city"></i><span>Licencje i Kolej</span></button>
+                <button onclick="switchTab('mail')" class="tab-btn px-4 py-2.5 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap relative transition">
+                    <i class="fa-solid fa-envelope"></i><span>Poczta / Ajenci</span>
+                    <span id="mail-badge" class="absolute top-1 right-0 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shadow-sm hidden">0</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto p-4 md:p-6 flex-grow w-full space-y-6">
+            <div id="section-map" class="tab-content space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="app-card lg:col-span-2 p-4 rounded-2xl shadow-sm border space-y-3">
+                        <h2 class="font-bold text-sm flex items-center justify-between">
+                            <span class="flex items-center gap-2"><div class="p-1.5 bg-amber-100 text-amber-700 rounded-lg"><i class="fa-solid fa-location-dot"></i></div> Mapa Sieci – Kliknij na wolny plac, aby wybrać lokalizację</span>
+                            <span id="traffic-status" class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Ruch płynny</span>
+                        </h2>
+                        <div id="map" class="h-[400px] w-full rounded-xl border shadow-inner"></div>
+                    </div>
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-hammer text-emerald-600"></i> Budowa Infrastruktury i Zajezdni
+                        </h3>
+                        <form onsubmit="handleAddInfrastructure(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold mb-1">Nazwa przystanku / pętli</label>
+                                <input type="text" id="infra-name" required placeholder="Wpisz nazwę przystanku / zajezdni" class="w-full px-3 py-2 text-sm border rounded-xl outline-none">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="block text-[10px] opacity-70 mb-0.5">Realny Adres (Pusty Plac)</label>
+                                <input type="text" id="infra-address" readonly required placeholder="Kliknij wolny plac na mapie" class="w-full px-2.5 py-2 border rounded-xl font-mono text-xs bg-slate-100">
+                            </div>
+                            <input type="hidden" id="infra-lat">
+                            <input type="hidden" id="infra-lng">
+                            <div>
+                                <label class="block text-xs font-bold mb-1">Typ obiektu</label>
+                                <select id="infra-type" class="w-full px-3 py-2 text-sm border rounded-xl outline-none">
+                                    <option value="Przystanek Autobusowy">Przystanek Autobusowy (0 PLN)</option>
+                                    <option value="Przystanek Tramwajowy">Przystanek Tramwajowy (0 PLN)</option>
+                                    <option value="Przystanek Trolejbusowy">Przystanek Trolejbusowy (0 PLN)</option>
+                                    <option value="Stacja Metra">Stacja Metra (0 PLN)</option>
+                                    <option value="Stacja Kolejowa">Stacja Kolejowa (0 PLN)</option>
+                                    <option value="Zajezdnia Autobusowo-Trolejbusowa">Zajezdnia Autobusowo-Trolejbusowa (Pierwsza: 0 PLN / Kolejne: 150,000 PLN)</option>
+                                    <option value="Zajezdnia Tramwajowa">Zajezdnia Tramwajowa (Pierwsza: 0 PLN / Kolejne: 300,000 PLN)</option>
+                                    <option value="STP (Stacja Techniczno-Postojowa)">STP (Stacja Techniczno-Postojowa) (Pierwsza: 0 PLN / Kolejne: 800,000 PLN)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-xl text-sm shadow-md transition">Zatwierdź i postaw obiekt</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs">
+                    <div class="app-card p-3 rounded-2xl border shadow-sm text-center">
+                        <div id="stat-bus-stops" class="font-extrabold text-base text-blue-600">0</div>
+                        <div class="opacity-75 text-[10px]"><i class="fa-solid fa-bus"></i> Przyst. aut.</div>
+                    </div>
+                    <div class="app-card p-3 rounded-2xl border shadow-sm text-center">
+                        <div id="stat-tram-stops" class="font-extrabold text-base text-amber-600">0</div>
+                        <div class="opacity-75 text-[10px]"><i class="fa-solid fa-tram"></i> Przyst. tram.</div>
+                    </div>
+                    <div class="app-card p-3 rounded-2xl border shadow-sm text-center">
+                        <div id="stat-trolley-stops" class="font-extrabold text-base text-teal-600">0</div>
+                        <div class="opacity-75 text-[10px]"><i class="fa-solid fa-bolt"></i> Przyst. trolejbus.</div>
+                    </div>
+                    <div class="app-card p-3 rounded-2xl border shadow-sm text-center">
+                        <div id="stat-bus-lines" class="font-extrabold text-base text-indigo-600">0</div>
+                        <div class="opacity-75 text-[10px]"><i class="fa-solid fa-route"></i> Linie aut.</div>
+                    </div>
+                    <div class="app-card p-3 rounded-2xl border shadow-sm text-center">
+                        <div id="stat-tram-lines" class="font-extrabold text-base text-rose-600">0</div>
+                        <div class="opacity-75 text-[10px]"><i class="fa-solid fa-route"></i> Linie tram.</div>
+                    </div>
+                    <div class="app-card p-3 rounded-2xl border shadow-sm text-center">
+                        <div id="stat-trolley-lines" class="font-extrabold text-base text-cyan-600">0</div>
+                        <div class="opacity-75 text-[10px]"><i class="fa-solid fa-route"></i> Linie trol.</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div class="app-card p-3 rounded-2xl border shadow-sm text-center">
+                        <div id="stat-rail-conn" class="font-extrabold text-base text-purple-600">0</div>
+                        <div class="opacity-75 text-[10px]"><i class="fa-solid fa-train"></i> Połączenia kol. / stacje</div>
+                    </div>
+                    <div class="app-card p-3 rounded-2xl border shadow-sm text-center">
+                        <div id="stat-rail-sets" class="font-extrabold text-base text-orange-600">0</div>
+                        <div class="opacity-75 text-[10px]"><i class="fa-solid fa-train-subway"></i> Składy kolejowe</div>
+                    </div>
+                    <div class="app-card p-3 rounded-2xl border shadow-sm flex items-center justify-around">
+                        <div class="text-center">
+                            <div id="stat-total-revenue" class="font-extrabold text-sm text-emerald-600">0 PLN</div>
+                            <div class="opacity-75 text-[10px]">Łączny przychód</div>
+                        </div>
+                        <div class="h-8 w-px bg-slate-300 opacity-50"></div>
+                        <div class="text-center">
+                            <div id="stat-total-expenses" class="font-extrabold text-sm text-rose-600">0 PLN</div>
+                            <div class="opacity-75 text-[10px]">Łączne straty / koszty</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-3 border-b pb-3">
+                        <h3 class="font-bold text-sm flex items-center gap-2 text-amber-600">
+                            <i class="fa-solid fa-list-check"></i> Zarządzanie i Ulepszenia Przystanków
+                        </h3>
+                        <div class="flex items-center gap-2 w-full md:w-auto">
+                            <input type="text" id="map-stops-search" oninput="renderStopsUpgrades()" placeholder="Szukaj przystanku..." class="px-3 py-1.5 border rounded-xl text-xs outline-none w-full md:w-64">
+                            <select id="map-stops-filter-type" onchange="renderStopsUpgrades()" class="px-3 py-1.5 border rounded-xl text-xs outline-none">
+                                <option value="">Wszystkie typy</option>
+                                <option value="Autobusowy">Autobusowe</option>
+                                <option value="Tramwajowy">Tramwajowe</option>
+                                <option value="Trolejbusowy">Trolejbusowe</option>
+                                <option value="Metra">Metro</option>
+                                <option value="Kolejowa">Kolejowe</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="stops-upgrades-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
+                </div>
+            </div>
+
+            <div id="section-lines" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex items-center gap-2"><i class="fa-solid fa-plus-circle text-amber-600"></i> Tworzenie Linii i Rozkładu</h3>
+                        <form onsubmit="handleCreateLine(event)" class="space-y-3">
+                            <div><label class="block text-xs font-bold mb-1">Numer linii</label><input type="text" id="line-number" required placeholder="np. 15, N11" class="w-full px-3 py-2 text-sm border rounded-xl outline-none"></div>
+                            <div><label class="block text-xs font-bold mb-1">Nazwa / Relacja</label><input type="text" id="line-route" required placeholder="np. Dworzec Główny - Armii Krajowej" class="w-full px-3 py-2 text-sm border rounded-xl outline-none"></div>
+                            <div>
+                                <label class="block text-xs font-bold mb-1">Kategoria linii</label>
+                                <select id="line-category" onchange="onLineCategoryChange()" class="w-full px-3 py-2 text-sm border rounded-xl outline-none">
+                                    <option value="Dzienna Autobusowa">Dzienna Autobusowa</option>
+                                    <option value="Dzienna Tramwajowa">Dzienna Tramwajowa</option>
+                                    <option value="Dzienna Trolejbusowa">Dzienna Trolejbusowa</option>
+                                    <option value="Nocna Autobusowa">Nocna Autobusowa</option>
+                                    <option value="Nocna Tramwajowa">Nocna Tramwajowa</option>
+                                    <option value="Nocna Trolejbusowa">Nocna Trolejbusowa</option>
+                                    <option value="Kolejowa">Kolejowa</option>
+                                    <option value="Regionalna">Regionalna</option>
+                                    <option value="Metra">Metra</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><label class="block text-[11px] font-bold mb-1">Od godziny (w grze)</label><input type="time" id="line-start-time" value="04:30" class="w-full px-3 py-1.5 text-xs border rounded-xl outline-none"></div>
+                                <div><label class="block text-[11px] font-bold mb-1">Do godziny (w grze)</label><input type="time" id="line-end-time" value="23:00" class="w-full px-3 py-1.5 text-xs border rounded-xl outline-none"></div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold mb-1">Trasa Przystanków</label>
+                                <button type="button" onclick="openStopPickerModal()" class="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl text-xs shadow"><i class="fa-solid fa-list-check"></i> Wybierz przystanki z listy...</button>
+                            </div>
+                            <div class="border rounded-xl p-3 text-xs space-y-1">
+                                <span class="font-bold">Wybrana trasa (<span id="line-stops-count">0</span>):</span>
+                                <ul id="line-stops-preview" class="list-disc list-inside opacity-60"><li>Brak przystanków</li></ul>
+                            </div>
+                            <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-xl text-sm shadow-md transition">Utwórz linię</button>
+                        </form>
+                    </div>
+                    <div class="app-card lg:col-span-2 p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex items-center gap-2"><i class="fa-solid fa-network-wired text-amber-600"></i> Aktywne Linie</h3>
+                        <div id="lines-list-container" class="space-y-3 text-xs"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-depots" class="tab-content hidden space-y-6">
+                <div class="flex border-b space-x-2 text-xs font-bold pb-2 overflow-x-auto">
+                    <button onclick="switchFleetSubTab('depots')" id="subtab-btn-depots" class="px-4 py-2 bg-amber-600 text-white rounded-xl shadow">Zajezdnie</button>
+                    <button onclick="switchFleetSubTab('bus')" id="subtab-btn-bus" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition">Tabor Autobusowy</button>
+                    <button onclick="switchFleetSubTab('tram')" id="subtab-btn-tram" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition">Tabor Tramwajowy</button>
+                    <button onclick="switchFleetSubTab('trolley')" id="subtab-btn-trolley" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition">Tabor Trolejbusowy</button>
+                    <button onclick="switchFleetSubTab('metro')" id="subtab-btn-metro" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition">Tabor Metra</button>
+                    <button onclick="switchFleetSubTab('rail')" id="subtab-btn-rail" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition">Tabor Kolejowy</button>
+                    <button onclick="switchFleetSubTab('tech')" id="subtab-btn-tech" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition">Tabor Techniczny</button>
+                </div>
+
+                <div id="fleet-subtab-depots" class="fleet-subtab-content grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex items-center gap-2 text-amber-600"><i class="fa-solid fa-warehouse"></i> Lista Zajezdni i Rozbudowa</h3>
+                        <div id="depots-management-list" class="space-y-4 text-xs max-h-[500px] overflow-y-auto pr-1"></div>
+                    </div>
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex items-center gap-2 text-amber-600"><i class="fa-solid fa-pen-to-square"></i> Przypisanie Pojazdu i Numery</h3>
+                        <p class="text-xs opacity-75">Przypisz swoje pojazdy do zajezdni (zgodnie z typem) i edytuj numery taborowe.</p>
+                        <div id="fleet-numbers-edit-container" class="space-y-3 max-h-[480px] overflow-y-auto pr-1 text-xs"></div>
+                    </div>
+                </div>
+
+                <div id="fleet-subtab-vehicles" class="fleet-subtab-content hidden space-y-4">
+                    <div class="app-card p-4 rounded-2xl shadow-sm border flex items-center gap-3">
+                        <i class="fa-solid fa-magnifying-glass text-amber-500"></i>
+                        <input type="text" id="fleet-search-input" oninput="renderSpecificFleetView()" placeholder="Szukaj po numerze taborowym lub modelu..." class="w-full text-sm outline-none bg-transparent">
+                    </div>
+                    <div id="fleet-specific-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs"></div>
+                </div>
+            </div>
+
+            <div id="section-tickets" class="tab-content hidden space-y-6">
+                <div class="app-card p-6 rounded-2xl shadow-sm border space-y-6">
+                    <h3 class="font-extrabold text-base flex items-center gap-2"><i class="fa-solid fa-ticket text-amber-600"></i> Zarządzanie Cennikiem Biletów</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                        <div class="border p-4 rounded-2xl space-y-4">
+                            <div class="flex justify-between items-center border-b pb-2">
+                                <h4 class="font-extrabold text-sm text-amber-600">Bilety Ulgowe</h4>
+                                <div class="space-x-1">
+                                    <button onclick="setAllTickets('reduced', false)" class="px-2 py-1 bg-rose-500 text-white rounded font-bold text-[10px]">Wyłącz wszystkie</button>
+                                    <button onclick="setAllTickets('reduced', true)" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[10px]">Włącz wszystkie</button>
+                                </div>
+                            </div>
+                            <div id="tickets-reduced-container" class="space-y-3"></div>
+                        </div>
+                        <div class="border p-4 rounded-2xl space-y-4">
+                            <div class="flex justify-between items-center border-b pb-2">
+                                <h4 class="font-extrabold text-sm text-amber-600">Bilety Normalne</h4>
+                                <div class="space-x-1">
+                                    <button onclick="setAllTickets('normal', false)" class="px-2 py-1 bg-rose-500 text-white rounded font-bold text-[10px]">Wyłącz wszystkie</button>
+                                    <button onclick="setAllTickets('normal', true)" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[10px]">Włącz wszystkie</button>
+                                </div>
+                            </div>
+                            <div id="tickets-normal-container" class="space-y-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-depot" class="tab-content hidden space-y-6">
+                <div class="app-card p-4 rounded-2xl shadow-sm border flex items-center gap-3">
+                    <i class="fa-solid fa-magnifying-glass text-amber-500"></i>
+                    <input type="text" id="vehicle-search" placeholder="Szukaj pojazdu w katalogu..." oninput="filterVehicleCatalog()" class="w-full text-sm outline-none bg-transparent">
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex items-center gap-2"><i class="fa-solid fa-shop text-amber-600"></i> Katalog Pojazdów</h3>
+                        <div id="catalog-container" class="space-y-4 max-h-[500px] overflow-y-auto pr-1 text-xs"></div>
+                    </div>
+
+                    <div class="app-card lg:col-span-2 p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex justify-between items-center">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-warehouse text-amber-600"></i> Posiadana Flota (<span id="owned-count">0</span>)</span>
+                        </h3>
+                        <div id="depot-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"></div>
+
+                        <div class="mt-6 p-4 border rounded-2xl space-y-3 shadow-inner app-card">
+                            <h4 class="font-extrabold text-xs flex items-center gap-2"><i class="fa-solid fa-link text-amber-600"></i> Składy Wielowagonowe / Pociągi Tramwajowe</h4>
+                            <p class="text-[11px] opacity-75">Dozwolone konfiguracje: 2-3x Konstal N, 2-3x Konstal 105Na, 2x Konstal 105N2k, 2-3x Konstal 13N.</p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                                <select id="compose-select-1" class="p-2.5 border rounded-xl outline-none"><option value="">-- Wagon 1 --</option></select>
+                                <select id="compose-select-2" class="p-2.5 border rounded-xl outline-none"><option value="">-- Wagon 2 --</option></select>
+                                <select id="compose-select-3" class="p-2.5 border rounded-xl outline-none"><option value="">-- Wagon 3 (Opcjonalnie) --</option></select>
+                            </div>
+                            <button onclick="composeTrain()" class="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl text-xs shadow-md">Połącz w prawidłowy skład</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-market" class="tab-content hidden space-y-6">
+                <div class="app-card p-6 rounded-2xl shadow-sm border space-y-6">
+                    <div class="flex justify-between items-center border-b pb-3">
+                        <div>
+                            <h3 class="font-extrabold text-base flex items-center gap-2"><i class="fa-solid fa-store text-amber-600"></i> Rynek Wtórny (Stale 6 ofert, odświeżanie co 1.5h)</h3>
+                            <p class="text-xs opacity-70 mt-1">Kupuj używane pojazdy dopasowane do Twojego budżetu lub wystawiaj własne!</p>
+                        </div>
+                    </div>
+                    <div id="market-listings-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs"></div>
+                </div>
+            </div>
+
+            <div id="section-finances" class="tab-content hidden space-y-6">
+                <div class="app-card p-6 rounded-2xl shadow-sm border space-y-6">
+                    <div class="flex justify-between items-center border-b pb-3">
+                        <h3 class="font-extrabold text-base flex items-center gap-2"><i class="fa-solid fa-wallet text-amber-600"></i> Zestawienie Budżetów Osób i Firm w Sieci</h3>
+                        <button onclick="renderFinancesTab()" class="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-xl text-xs"><i class="fa-solid fa-rotate-right"></i> Odśwież</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="border-b uppercase text-[10px] font-bold opacity-75">
+                                <tr>
+                                    <th class="p-3">Użytkownik / Firma</th>
+                                    <th class="p-3">Profil</th>
+                                    <th class="p-3">Ilość Pojazdów</th>
+                                    <th class="p-3">Aktywne Linie</th>
+                                    <th class="p-3 text-right">Dostępny Budżet (Saldo)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="finances-table-body" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-finance" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex items-center gap-2"><i class="fa-solid fa-hand-holding-dollar text-emerald-600"></i> Kredyty Bankowe</h3>
+                        <div class="space-y-3 text-xs">
+                            <div class="p-3.5 border rounded-xl flex justify-between items-center shadow-sm">
+                                <div><div class="font-bold text-sm">Kredyt Obrotowy</div><div class="opacity-70">200k PLN (Do spłaty: 230k PLN)</div></div>
+                                <button onclick="takeLoan(200000, 230000)" class="px-3 py-2 bg-amber-600 text-white rounded-xl font-bold">Weź</button>
+                            </div>
+                            <div class="p-3.5 border rounded-xl flex justify-between items-center shadow-sm">
+                                <div><div class="font-bold text-sm">Kredyt Inwestycyjny</div><div class="opacity-70">1 mln PLN (Do spłaty: 1.15 mln PLN)</div></div>
+                                <button onclick="takeLoan(1000000, 1150000)" class="px-3 py-2 bg-amber-600 text-white rounded-xl font-bold">Weź</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm flex items-center gap-2"><i class="fa-solid fa-chart-line text-amber-600"></i> Podsumowanie Finansowe</h3>
+                        <div class="space-y-2 text-xs">
+                            <div class="flex justify-between p-3 border rounded-xl"><span>Saldo:</span><span id="fin-balance" class="font-extrabold text-emerald-600">0 PLN</span></div>
+                            <div class="flex justify-between p-3 border rounded-xl"><span>Przychody z biletów (ostatnia godzina realna):</span><span id="fin-tickets-income" class="font-extrabold text-emerald-600">0 PLN</span></div>
+                            <div class="flex justify-between p-3 border rounded-xl"><span>Kredyty:</span><span id="fin-loans" class="font-extrabold text-rose-600">0 PLN</span></div>
+                            <div class="flex gap-2 pt-2">
+                                <button onclick="downloadSaveFile()" class="flex-1 py-2.5 bg-amber-600 text-white font-bold rounded-xl text-xs shadow"><i class="fa-solid fa-download"></i> Pobierz zapisu</button>
+                                <button onclick="resetGame()" class="flex-1 py-2.5 bg-rose-600 text-white font-bold rounded-xl text-xs shadow"><i class="fa-solid fa-rotate-right"></i> Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="admin-panel-container" class="hidden bg-gradient-to-r from-slate-900 to-amber-950 text-white p-6 rounded-2xl shadow-xl space-y-6 border border-amber-500/35">
+                    <h3 class="font-extrabold text-sm text-amber-300"><i class="fa-solid fa-shield-halved"></i> Panel Administratora (Tylko dla Qubax)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs items-center">
+                        <select id="admin-target" class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none"><option value="self">Moja Firma</option></select>
+                        <input type="number" id="admin-amount" value="1000000" class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none" placeholder="Kwota PLN">
+                        <button onclick="adminExecuteMoneyTransfer('add')" class="py-2.5 bg-emerald-600 text-white font-extrabold rounded-xl shadow">Dodaj środki</button>
+                        <button onclick="adminExecuteMoneyTransfer('sub')" class="py-2.5 bg-rose-600 text-white font-extrabold rounded-xl shadow">Zabierz środki</button>
+                    </div>
+                    <div class="pt-3 border-t border-slate-700 space-y-2">
+                        <label class="block font-bold text-xs text-rose-400">Zarządzanie kontami / Zamykanie firm w sieci:</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="admin-close-username" placeholder="Wpisz nick gracza do usunięcia..." class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none flex-grow text-xs">
+                            <button onclick="adminCloseUserCompany()" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow text-xs">Zamknij / Usuń firmę</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-expansion" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm"><i class="fa-solid fa-file-invoice-dollar text-amber-600"></i> Dotacja Samorządowa</h3>
+                        <button onclick="applyForSubsidy()" class="w-full py-2.5 bg-amber-600 text-white font-bold rounded-xl text-xs">Wyślij wniosek (100k PLN)</button>
+                    </div>
+                    <div class="app-card p-5 rounded-2xl shadow-sm border space-y-4">
+                        <h3 class="font-bold border-b pb-2 text-sm"><i class="fa-solid fa-stamp text-amber-600"></i> Licencje</h3>
+                        <div class="p-3 border rounded-xl flex justify-between items-center text-xs">
+                            <span>Licencja na Autokary (1.3 mln PLN)</span>
+                            <button onclick="buyCoachLicense()" class="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-xl">Kup</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section-mail" class="tab-content hidden space-y-6">
+                <div class="app-card p-6 rounded-2xl shadow-sm border space-y-4">
+                    <div class="flex justify-between items-center border-b pb-3">
+                        <h3 class="font-extrabold text-sm">Skrzynka Wiadomości</h3>
+                        <button onclick="clearMail()" class="text-rose-500 hover:underline text-xs">Wyczyść</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="border-b uppercase text-[10px] font-bold opacity-75">
+                                <tr><th class="p-2.5">Nadawca</th><th class="p-2.5">Temat</th><th class="p-2.5">Data</th></tr>
+                            </thead>
+                            <tbody id="mail-table-body" class="divide-y"><tr><td colspan="3" class="py-8 text-center italic opacity-50">Brak wiadomości.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="stop-picker-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="app-card w-full max-w-2xl rounded-2xl shadow-2xl p-6 space-y-4 border max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-extrabold text-base text-amber-600"><i class="fa-solid fa-route"></i> Wybierz przystanki i pętle do trasy (wielokrotny wybór)</h3>
+                <button onclick="closeStopPickerModal()" class="font-bold text-sm"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs items-center">
+                <input type="text" id="picker-search" oninput="renderStopPickerList()" placeholder="Wyszukaj przystanek..." class="px-3 py-2 border rounded-xl outline-none flex-grow">
+                <select id="picker-filter-type" onchange="renderStopPickerList()" class="px-3 py-2 border rounded-xl outline-none hidden">
+                    <option value="">Wszystkie typy</option>
+                </select>
+            </div>
+            <div id="picker-stops-container" class="space-y-2 max-h-96 overflow-y-auto pr-1 text-xs border p-3 rounded-xl"></div>
+            <div class="flex justify-between items-center pt-2 border-t">
+                <span id="picker-selected-summary" class="font-bold text-xs">Wybrano elementów trasy: 0</span>
+                <div class="space-x-2">
+                    <button onclick="clearStopPickerSelection()" class="px-4 py-2 border rounded-xl text-xs font-bold">Wyczyść</button>
+                    <button onclick="confirmStopPickerSelection()" class="px-5 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold shadow">Zatwierdź trasę</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sell-vehicle-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="app-card w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 border">
+            <h3 class="font-extrabold text-base border-b pb-2 text-amber-600"><i class="fa-solid fa-store"></i> Sprzedaż pojazdu</h3>
+            <div id="sell-modal-content" class="text-xs space-y-3"></div>
+            <div class="space-y-2 pt-2 border-t">
+                <button onclick="executeInstantSell()" class="w-full py-2.5 bg-rose-600 text-white font-bold rounded-xl text-xs shadow">Sprzedaj natychmiast (według ceny zakupu/stanu)</button>
+                <div class="p-3 border rounded-xl space-y-2 app-card">
+                    <label class="block font-bold">Wystaw na rynek wtórny (Cena PLN):</label>
+                    <input type="number" id="market-sell-price-input" class="w-full px-3 py-2 border rounded-xl text-xs outline-none">
+                    <button onclick="executeMarketSell()" class="w-full py-2.5 bg-amber-600 text-white font-bold rounded-xl text-xs shadow">Wystaw na rynek</button>
+                </div>
+            </div>
+            <button onclick="closeSellModal()" class="w-full py-2 border font-bold rounded-xl text-xs">Anuluj</button>
+        </div>
+    </div>
+
+    <div id="vehicle-fault-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="app-card w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4 border">
+            <h3 class="font-extrabold text-base border-b pb-2 text-amber-600"><i class="fa-solid fa-triangle-exclamation"></i> Warsztat i Stan Techniczny Pojazdu</h3>
+            <div id="vehicle-fault-modal-body" class="text-xs space-y-3"></div>
+            <div id="vehicle-fault-action" class="pt-2"></div>
+            <button onclick="closeVehicleFaultModal()" class="w-full py-2 border font-bold rounded-xl text-xs">Zamknij</button>
+        </div>
+    </div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById("toast-container");
+            if (!container) return;
+            const toast = document.createElement("div");
+            toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-xl text-xs font-bold text-white transition transform translate-y-2 opacity-0 flex items-center gap-2 ${type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check'} text-sm"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        const polandCities = [
+            { name: "Warszawa (z aglomeracją)", lat: 52.2297, lng: 21.0122, maxAgents: 2, isBig: true },
+            { name: "Kraków", lat: 50.0647, lng: 19.9450, maxAgents: 1, isBig: true },
+            { name: "Wrocław", lat: 51.1079, lng: 17.0385, maxAgents: 1, isBig: true },
+            { name: "Poznań", lat: 52.4064, lng: 16.9252, maxAgents: 1, isBig: true },
+            { name: "Łódź", lat: 51.7592, lng: 19.4559, maxAgents: 1, isBig: true },
+            { name: "Gdańsk / Trójmiasto", lat: 54.3520, lng: 18.6466, maxAgents: 2, isBig: true },
+            { name: "Chełm", lat: 51.1312, lng: 23.4651, maxAgents: 1, isBig: false },
+            { name: "Lublin", lat: 51.2465, lng: 22.5684, maxAgents: 1, isBig: true },
+            { name: "Szczecin", lat: 53.4285, lng: 14.5528, maxAgents: 1, isBig: true },
+            { name: "Katowice / GOP", lat: 50.2649, lng: 19.0238, maxAgents: 2, isBig: true },
+            { name: "Radom", lat: 51.4027, lng: 21.1471, maxAgents: 1, isBig: false },
+            { name: "Białystok", lat: 53.1325, lng: 23.1688, maxAgents: 1, isBig: true },
+            { name: "Bydgoszcz", lat: 53.1235, lng: 18.0084, maxAgents: 1, isBig: true }
+        ];
+
+        const ticketTypesList = ["20 minut", "75 minut", "90 minut", "100 minut", "1 dzień", "2 dni", "Tydzień", "Miesiąc", "3 Miesiące"];
+
+        const fullVehicleCatalog = [
+            // Pojazdy Techniczne / Ruchowe
+            { cat: "Pojazdy Techniczne", name: "Kia Ceed (Pogotowie Ruchowe / NR)", price: 95000, cap: 4, type: "tech_tech", prop: "diesel" },
+            { cat: "Pojazdy Techniczne", name: "Mercedes-Benz Unimog (Pogotowie Sieciowe)", price: 650000, cap: 2, type: "tech_tech", prop: "diesel" },
+            { cat: "Pojazdy Techniczne", name: "Scania Heavy Recovery (Pogotowie)", price: 850000, cap: 3, type: "tech_tech", prop: "diesel" },
+            { cat: "Pojazdy Techniczne", name: "Lokomotywa Manewrowa SM03", price: 2500000, cap: 2, type: "tech_rail", prop: "diesel" },
+
+            // Autobusy
+            { cat: "Autobusy", name: "Ikarus 260", price: 150000, cap: 75, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Ikarus 280", price: 220000, cap: 120, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Jelcz MB 121", price: 160000, cap: 80, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Jelcz MB 121M", price: 175000, cap: 82, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Neoplan N4020td", price: 180000, cap: 55, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Mercedes Sprinter", price: 220000, cap: 25, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Mercedes-Benz O530 ex. CLA", price: 240000, cap: 80, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Mercedes Conecto ex. Mobilis Warszawa", price: 290000, cap: 85, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Mercedes O530 18 m ex. MPK Lublin", price: 480000, cap: 135, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Mercedes Conecto LF E5 12 m", price: 1300000, cap: 85, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Mercedes Conecto E6 12 m", price: 1400000, cap: 88, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Mercedes Conecto LF E5 18 m", price: 1850000, cap: 140, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Mercedes Conecto E6 18 m", price: 1950000, cap: 142, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "MAN NG 313", price: 460000, cap: 130, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "MAN NL 253 Hybrid ex. Mobilis Warszawa", price: 450000, cap: 82, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "MAN NL 313 CNG", price: 500000, cap: 85, type: "bus", prop: "cng" },
+            { cat: "Autobusy", name: "MAN NG 313 CNG", price: 680000, cap: 130, type: "bus", prop: "cng" },
+            { cat: "Autobusy", name: "MAN Lion's City A42 3D ex. PKS Szczecin", price: 950000, cap: 140, type: "bus", prop: "cng" },
+            { cat: "Autobusy", name: "MAN Lion's City A23", price: 1250000, cap: 140, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "MAN NLC 12m", price: 1420000, cap: 90, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "MAN NLC CNG 12m", price: 1500000, cap: 90, type: "bus", prop: "cng" },
+            { cat: "Autobusy", name: "MAN NLC Electric 12m", price: 2000000, cap: 88, type: "bus", prop: "electric" },
+            { cat: "Autobusy", name: "MAN NLC 18m", price: 2200000, cap: 140, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "MAN NLC CNG 18m", price: 2350000, cap: 140, type: "bus", prop: "cng" },
+            { cat: "Autobusy", name: "MAN NLC Electric 18m", price: 3150000, cap: 138, type: "bus", prop: "electric" },
+            { cat: "Autobusy", name: "Otokar Vectio C", price: 65000, cap: 60, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Otokar Kent C Mild Hybrid", price: 120000, cap: 85, type: "bus", prop: "hybrid" },
+            { cat: "Autobusy", name: "Solaris Urbino II 15 m", price: 320000, cap: 50, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino II 12 m", price: 340000, cap: 82, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino I 12 m", price: 260000, cap: 80, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino II 18 m", price: 520000, cap: 130, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino 8.9 LE", price: 950000, cap: 50, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino III 12 m Diesel", price: 750000, cap: 85, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino III 12 m Hybrid", price: 1100000, cap: 85, type: "bus", prop: "hybrid" },
+            { cat: "Autobusy", name: "Solaris Urbino III 18 m Diesel", price: 1200000, cap: 140, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino III 18 m Hybrid", price: 1550000, cap: 140, type: "bus", prop: "hybrid" },
+            { cat: "Autobusy", name: "Solaris Urbino III 12 m Electric", price: 1650000, cap: 83, type: "bus", prop: "electric" },
+            { cat: "Autobusy", name: "Solaris Urbino IV 12 m Diesel", price: 1350000, cap: 85, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino IV 12 m CNG", price: 1450000, cap: 85, type: "bus", prop: "cng" },
+            { cat: "Autobusy", name: "Solaris Urbino IV 12 m Electric", price: 1950000, cap: 85, type: "bus", prop: "electric" },
+            { cat: "Autobusy", name: "Solaris Urbino IV 18 m Diesel", price: 2100000, cap: 145, type: "bus", prop: "diesel" },
+            { cat: "Autobusy", name: "Solaris Urbino IV 18 m CNG", price: 2250000, cap: 145, type: "bus", prop: "cng" },
+            { cat: "Autobusy", name: "Solaris Urbino III 18 m Electric", price: 2500000, cap: 138, type: "bus", prop: "electric" },
+            { cat: "Autobusy", name: "Solaris Urbino IV 18 m Electric", price: 3100000, cap: 140, type: "bus", prop: "electric" },
+            { cat: "Autobusy", name: "Solaris Urbino IV 18 m Electric 2026", price: 3300000, cap: 140, type: "bus", prop: "electric" },
+            { cat: "Autobusy", name: "NesoBus Evobuss", price: 3400000, cap: 85, type: "bus", prop: "hydrogen" },
+
+            // Tramwaje
+            { cat: "Tramwaje", name: "Konstal N", price: 400000, cap: 55, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Konstal 13N ('Parówka')", price: 450000, cap: 60, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Konstal 105N", price: 500000, cap: 65, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Konstal 105Na", price: 550000, cap: 68, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Konstal 105N2k", price: 600000, cap: 70, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Konstal 105N2k/2000 (Sterowniczy + Doczepa)(Bulwa), (Delfinek)", price: 1100000, cap: 145, type: "tram", prop: "electric", isDualNumber: true },
+            { cat: "Tramwaje", name: "Konstal 112N (Rodzynek)", price: 1500000, cap: 160, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Konstal 116Na", price: 1900000, cap: 170, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Tatra KT4Dt ex. Szczecin", price: 750000, cap: 75, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "HCP 123N (Sterowniczy + Doczepa) (Hipcio)", price: 1200000, cap: 150, type: "tram", prop: "electric", isDualNumber: true },
+            { cat: "Tramwaje", name: "Moderus Beta MF02AC ex. MPK Poznań", price: 2400000, cap: 180, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Moderus Beta MF29ACBD ex. Szczecin", price: 2600000, cap: 185, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Moderus Gamma LF12AC (Mrufka)", price: 15200000, cap: 230, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Solaris Tramino S105p", price: 9000000, cap: 195, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Solaris Tramino S111o ex. MPK Olsztyn", price: 9500000, cap: 180, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Pesa Tramicus 120N", price: 7500000, cap: 195, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Pesa Swing 120Na", price: 11500000, cap: 200, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Pesa Jazz 134N", price: 12000000, cap: 180, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Pesa Twist 2015 ex. Gorzów Wklp.", price: 12500000, cap: 210, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Pesa Swing 120NaNG (po modernizacji)", price: 13500000, cap: 200, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Pesa Swing 120NaS2", price: 14000000, cap: 205, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Pesa Jazz 128N", price: 14500000, cap: 210, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Pesa Jazz 128NG", price: 15600000, cap: 210, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Hyundai Rotem 142N", price: 17500000, cap: 200, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Hyundai Rotem 140N", price: 18200000, cap: 220, type: "tram", prop: "electric", isDualNumber: false },
+            { cat: "Tramwaje", name: "Hyundai Rotem 141N", price: 18900000, cap: 225, type: "tram", prop: "electric", isDualNumber: false },
+
+            // Metro
+            { cat: "Metro", name: "Wagonmasz 81-717.3", price: 18000000, cap: 600, type: "metro", prop: "electric" },
+            { cat: "Metro", name: "Wagonmasz 81-572.2", price: 20000000, cap: 650, type: "metro", prop: "electric" },
+            { cat: "Metro", name: "Alstom Metropolis 98B", price: 45000000, cap: 750, type: "metro", prop: "electric" },
+            { cat: "Metro", name: "Siemens Inspiro", price: 52000000, cap: 850, type: "metro", prop: "electric" },
+            { cat: "Metro", name: "Škoda Varsovia", price: 58000000, cap: 900, type: "metro", prop: "electric" },
+
+            // Pociągi i EZT
+            { cat: "Pociągi i Wagony", name: "Skład EP05 + Stare Wagony", price: 6500000, cap: 160, type: "rail", prop: "electric" },
+            { cat: "Pociągi i Wagony", name: "Skład EP07 + Stare Wagony", price: 7200000, cap: 180, type: "rail", prop: "electric" },
+            { cat: "Pociągi i Wagony", name: "Skład EP08 + Stare Wagony", price: 7800000, cap: 180, type: "rail", prop: "electric" },
+            { cat: "Pociągi i Wagony", name: "Skład EU07 + Nowe Wagony (Z Wars)", price: 12000000, cap: 220, type: "rail", prop: "electric" },
+            { cat: "Pociągi i Wagony", name: "Skład EU08 + Nowe Wagony", price: 12800000, cap: 220, type: "rail", prop: "electric" },
+            { cat: "Pociągi i Wagony", name: "Skład EU44 Husarz + Nowe Wagony", price: 22000000, cap: 300, type: "rail", prop: "electric" },
+            { cat: "Pociągi i Wagony", name: "Skład EU160 Griffin + Wagony", price: 25000000, cap: 320, type: "rail", prop: "electric" },
+            { cat: "Pociągi i Wagony", name: "Skład EU200 + Wagony", price: 29000000, cap: 350, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "EN57 Klasyk ('Kibelek')", price: 1500000, cap: 300, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "EN71 Przegub", price: 2200000, cap: 420, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "EN57AKM ex. Koleje Mazowieckie", price: 3500000, cap: 330, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "EN57AL Modernizacja", price: 4800000, cap: 350, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "Pesa Elf 27WE", price: 32000000, cap: 450, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "Pesa Elf 2.0", price: 32800000, cap: 490, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "Newag Impuls 35WE", price: 35000000, cap: 450, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "Stadler FLirt", price: 36000000, cap: 480, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "EDS161 Dart", price: 37000000, cap: 490, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "EDS162 Dart", price: 38000000, cap: 500, type: "rail", prop: "electric" },
+            { cat: "Elektryczne Zespoły Trakcyjne (EZT)", name: "ED250 Pendolino (Dziobak)", price: 40000000, cap: 670, type: "rail", prop: "electric" },
+
+            // Trolejbusy
+            { cat: "Trolejbusy", name: "ZiU-9", price: 290000, cap: 70, type: "trolley", prop: "electric" },
+            { cat: "Trolejbusy", name: "ZiU-682", price: 320000, cap: 72, type: "trolley", prop: "electric" },
+            { cat: "Trolejbusy", name: "Škoda 15 Tr", price: 490000, cap: 110, type: "trolley", prop: "electric" },
+            { cat: "Trolejbusy", name: "Bogdan / Ursus T70116", price: 1250000, cap: 80, type: "trolley", prop: "electric" },
+            { cat: "Trolejbusy", name: "Solaris Trollino 12 MB", price: 1600000, cap: 85, type: "trolley", prop: "electric" },
+            { cat: "Trolejbusy", name: "Solaris Trollino IV 12", price: 1850000, cap: 85, type: "trolley", prop: "electric" },
+            { cat: "Trolejbusy", name: "Solaris Trollino III 18", price: 2400000, cap: 135, type: "trolley", prop: "electric" },
+            { cat: "Trolejbusy", name: "Solaris Trollino IV 18", price: 2750000, cap: 140, type: "trolley", prop: "electric" },
+            { cat: "Trolejbusy", name: "Solaris Trollino IV 24", price: 3400000, cap: 180, type: "trolley", prop: "electric" },
+
+            // Autokary
+            { cat: "Autokary (Wymagana Licencja)", name: "Mercedes-Benz Tourismo", price: 1600000, cap: 55, type: "coach", prop: "diesel" },
+            { cat: "Autokary (Wymagana Licencja)", name: "MAN Lion's Coach", price: 1750000, cap: 58, type: "coach", prop: "diesel" },
+            { cat: "Autokary (Wymagana Licencja)", name: "Setra ComfortClass", price: 1900000, cap: 60, type: "coach", prop: "diesel" }
+        ];
+
+        let currentUser = null;
+        let game = {
+            username: "",
+            companyName: "Qubax Transport",
+            profile: "urban",
+            money: 992500,
+            baseCity: polandCities[0],
+            stops: [],
+            depots: [],
+            lines: [],
+            vehicles: [],
+            marketListings: [],
+            loans: 0,
+            mail: [],
+            tempSelectedStops: [],
+            gameMinutes: 360,
+            lastTickTimestamp: Date.now(),
+            lastProcessedRealHour: 0,
+            theme: "light",
+            tickets: {
+                reduced: { "20 minut": 2.4, "75 minut": 3.6, "90 minut": 4.2, "100 minut": 4.8, "1 dzień": 12.0, "2 dni": 21.6, "Tydzień": 42.0, "Miesiąc": 66.0, "3 Miesiące": 168.0 },
+                normal:  { "20 minut": 4.0, "75 minut": 6.0, "90 minut": 7.0, "100 minut": 8.0, "1 dzień": 20.0, "2 dni": 36.0, "Tydzień": 70.0, "Miesiąc": 110.0, "3 Miesiące": 280.0 }
+            },
+            currentFleetSubTab: 'depots',
+            lastMarketRefresh: 0,
+            selectedVehicleToSell: null,
+            unimogWarningTimer: 0
+        };
+
+        let map, selectedMarker = null;
+
+        window.onload = function() {
+            const activeUser = localStorage.getItem('polska_transport_active_user');
+            if(activeUser) {
+                const saved = localStorage.getItem(`polska_transport_user_${activeUser}`);
+                if(saved) {
+                    try {
+                        game = JSON.parse(saved);
+                        currentUser = activeUser;
+                        launchMainApp();
+                        return;
+                    } catch(e) {}
+                }
+            }
+
+            checkSavedAccountsOnDevice();
+            renderCitySelection();
+            renderTicketSettings();
+            setTheme(game.theme || "light");
+            startEngine();
+        };
+
+        function launchMainApp() {
+            document.getElementById("auth-screen").classList.add("hidden");
+            document.getElementById("setup-screen").classList.add("hidden");
+            document.getElementById("main-app").classList.remove("hidden");
+            document.getElementById("header-company-name").innerText = game.companyName || "Firma";
+            document.getElementById("header-profile-badge").innerText = game.profile === 'urban' ? "Transport Miejski" : "Kolej";
+            document.getElementById("header-city-name").innerText = "Baza: " + (game.baseCity ? game.baseCity.name : "Warszawa");
+            document.getElementById("header-user-badge").innerText = `Gracz: ${currentUser}`;
+
+            // Sprawdzenie uprawnień panelu administratora (Tylko dla Qubax)
+            if(currentUser && currentUser.toLowerCase() === 'qubax') {
+                document.getElementById("admin-panel-container").classList.remove("hidden");
+            } else {
+                document.getElementById("admin-panel-container").classList.add("hidden");
+            }
+
+            setTheme(game.theme || "light");
+            initMap();
+            renderStopsUpgrades();
+            renderCatalog(fullVehicleCatalog);
+            updateBalance();
+            updateMapStats();
+            updateMailBadge();
+            startEngine();
+            localStorage.setItem('polska_transport_active_user', currentUser);
+            saveGameToLocalStorage();
+        }
+
+        function closeOfflineModal() {
+            document.getElementById("offline-modal").classList.add("hidden");
+            updateBalance();
+            updateMapStats();
+        }
+
+        function checkSavedAccountsOnDevice() {
+            const savedAccountsListEl = document.getElementById("saved-accounts-list");
+            const savedSectionEl = document.getElementById("saved-accounts-section");
+            let foundCount = 0;
+            savedAccountsListEl.innerHTML = "";
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if(key && key.startsWith('polska_transport_user_')) {
+                    const uName = key.replace('polska_transport_user_', '');
+                    foundCount++;
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "w-full text-left px-3 py-2 border rounded-xl hover:bg-amber-500/10 font-bold text-xs flex justify-between items-center transition app-card";
+                    btn.innerHTML = `<span><i class="fa-solid fa-user-check text-amber-600"></i> ${uName}</span> <span class="text-amber-600 text-[10px]">Wybierz zapis</span>`;
+                    btn.onclick = () => {
+                        document.getElementById("auth-username").value = uName;
+                        document.getElementById("auth-password").value = "********";
+                        handleLoginOrRegister();
+                    };
+                    savedAccountsListEl.appendChild(btn);
+                }
+            }
+
+            if(foundCount > 0) {
+                savedSectionEl.classList.remove("hidden");
+            }
+        }
+
+        function handleLoginOrRegister() {
+            const uInput = document.getElementById("auth-username").value.trim();
+            const pInput = document.getElementById("auth-password").value.trim();
+            if(!uInput || !pInput) { showToast("Wpisz nick i hasło!", "error"); return; }
+
+            currentUser = uInput;
+            const savedData = localStorage.getItem(`polska_transport_user_${currentUser}`);
+
+            if(savedData) {
+                try {
+                    game = JSON.parse(savedData);
+                    showToast(`Wczytano autozapis gracza: ${currentUser}!`);
+                    launchMainApp();
+                } catch(e) {
+                    showToast("Błąd wczytywania autozapisu.", "error");
+                }
+            } else {
+                game.username = currentUser;
+                document.getElementById("auth-screen").classList.add("hidden");
+                document.getElementById("setup-screen").classList.remove("hidden");
+            }
+        }
+
+        function startTycoonGame() {
+            const cName = document.getElementById("setup-company-name").value.trim();
+            if(!cName) { showToast("Wpisz nazwę firmy!", "error"); return; }
+            if(!window.selectedCity) window.selectedCity = polandCities[0];
+
+            game.companyName = cName;
+            game.profile = document.getElementById("setup-profile").value;
+            game.baseCity = window.selectedCity;
+            game.money = 992500;
+            game.lastTickTimestamp = Date.now();
+
+            game.mail.unshift({
+                sender: "Kolega Dziadka (Marek)",
+                subject: "Spadek i powitanie w branży!",
+                date: "Dziś, 06:00",
+                text: "Siemanko! Słyszałem, że otwierasz własną sieć transportową w mieście. Dziadek zostawił w spadku dla Ciebie 25 000 PLN oraz dwa wysłużone Ikarusy 260 na start. Dbaj o nie dobrze i szerokiej drogi!"
+            });
+
+            if (game.profile === 'urban') {
+                for(let i=0; i<2; i++) {
+                    game.vehicles.push({
+                        instanceId: Date.now() + i,
+                        fleetNumber: `#${Math.floor(1000 + Math.random() * 9000)}`,
+                        name: "Ikarus 260",
+                        cat: "Autobusy",
+                        price: 150000,
+                        cap: 75,
+                        type: "bus",
+                        prop: "diesel",
+                        fuel: 100,
+                        lineId: null,
+                        depotId: null,
+                        condition: 85,
+                        dirtiness: Math.floor(Math.random() * 60),
+                        delay: 0,
+                        repairFinishTime: 0,
+                        faults: [],
+                        isComposed: false
+                    });
+                }
+            } else {
+                game.vehicles.push({
+                    instanceId: Date.now(),
+                    fleetNumber: `#${Math.floor(1000 + Math.random() * 9000)}`,
+                    name: "Skład EN57 Klasyk",
+                    cat: "Pociągi i Wagony",
+                    price: 1500000,
+                    cap: 300,
+                    type: "rail",
+                    prop: "electric",
+                    fuel: 100,
+                    lineId: null,
+                    depotId: null,
+                    condition: 90,
+                    dirtiness: Math.floor(Math.random() * 40),
+                    delay: 0,
+                    repairFinishTime: 0,
+                    faults: [],
+                    isComposed: false
+                });
+            }
+
+            document.getElementById("setup-screen").classList.add("hidden");
+            saveGameToLocalStorage();
+            launchMainApp();
+            showToast("Firma została założona pomyślnie!");
+        }
+
+        function saveGameToLocalStorage() {
+            if(!currentUser) return;
+            game.lastTickTimestamp = Date.now();
+            try { 
+                localStorage.setItem(`polska_transport_user_${currentUser}`, JSON.stringify(game)); 
+            } catch(e) {}
+        }
+
+        function setTheme(themeName) {
+            game.theme = themeName;
+            document.getElementById("html-root").className = `theme-${themeName}`;
+        }
+
+        function renderCitySelection(filter = "") {
+            const container = document.getElementById("city-select-container");
+            if(!container) return;
+            container.innerHTML = "";
+            const query = filter.trim().toLowerCase();
+            const filtered = polandCities.filter(c => c.name.toLowerCase().includes(query));
+            if(query.length > 0 && !filtered.some(c => c.name.toLowerCase() === query)) {
+                filtered.unshift({ name: filter.trim() + " (Własne miasto)", lat: 52.0, lng: 20.0 });
+            }
+            filtered.forEach((city) => {
+                const div = document.createElement("div");
+                div.className = "p-3 hover:bg-amber-50 cursor-pointer flex justify-between items-center text-xs text-slate-800";
+                div.innerHTML = `<span><b>${city.name}</b></span> <span class="text-amber-600 font-bold">Wybierz</span>`;
+                div.onclick = () => {
+                    document.querySelectorAll("#city-select-container > div").forEach(d => d.classList.remove("bg-amber-50"));
+                    div.classList.add("bg-amber-50");
+                    window.selectedCity = city;
+                };
+                container.appendChild(div);
+            });
+            if(filtered.length > 0) {
+                window.selectedCity = filtered[0];
+                if(container.firstChild) container.firstChild.classList.add("bg-amber-50");
+            }
+        }
+
+        function filterCities() { renderCitySelection(document.getElementById("city-search-input").value); }
+
+        function renderTicketSettings() {
+            const redContainer = document.getElementById("tickets-reduced-container");
+            const normContainer = document.getElementById("tickets-normal-container");
+            if(!redContainer || !normContainer) return;
+            redContainer.innerHTML = ""; normContainer.innerHTML = "";
+            ticketTypesList.forEach(tName => {
+                const redVal = game.tickets.reduced[tName];
+                const normVal = game.tickets.normal[tName];
+                let discountPercent = normVal > 0 ? Math.round((1 - (redVal / normVal)) * 100) : 40;
+                discountPercent = Math.max(10, Math.min(40, discountPercent));
+
+                redContainer.innerHTML += `
+                    <div class="space-y-1 p-2 border rounded-xl">
+                        <div class="flex justify-between font-bold"><span>${tName}</span><span>${redVal === 0 ? 'Wyłączony' : redVal.toFixed(2) + ' PLN (' + discountPercent + '%)'}</span></div>
+                        <input type="range" min="0" max="200" step="0.5" value="${redVal}" oninput="updateTicketPrice('reduced', '${tName}', this.value)" class="w-full accent-amber-600">
+                    </div>`;
+                normContainer.innerHTML += `
+                    <div class="space-y-1 p-2 border rounded-xl">
+                        <div class="flex justify-between font-bold"><span>${tName}</span><span>${normVal === 0 ? 'Wyłączony' : normVal.toFixed(2) + ' PLN'}</span></div>
+                        <input type="range" min="0" max="200" step="0.5" value="${normVal}" oninput="updateTicketPrice('normal', '${tName}', this.value)" class="w-full accent-amber-600">
+                    </div>`;
+            });
+        }
+
+        function updateTicketPrice(category, tName, val) {
+            game.tickets[category][tName] = parseFloat(val);
+            renderTicketSettings();
+        }
+
+        function setAllTickets(category, enable) {
+            ticketTypesList.forEach(tName => {
+                if(enable) {
+                    if(category === 'normal') {
+                        const defaults = { "20 minut": 4.0, "75 minut": 6.0, "90 minut": 7.0, "100 minut": 8.0, "1 dzień": 20.0, "2 dni": 36.0, "Tydzień": 70.0, "Miesiąc": 110.0, "3 Miesiące": 280.0 };
+                        game.tickets.normal[tName] = defaults[tName] || 5.0;
+                    } else {
+                        const defaultsRed = { "20 minut": 2.4, "75 minut": 3.6, "90 minut": 4.2, "100 minut": 4.8, "1 dzień": 12.0, "2 dni": 21.6, "Tydzień": 42.0, "Miesiąc": 66.0, "3 Miesiące": 168.0 };
+                        game.tickets.reduced[tName] = defaultsRed[tName] || 3.0;
+                    }
+                } else {
+                    game.tickets[category][tName] = 0;
+                }
+            });
+            renderTicketSettings();
+        }
+
+        function renderCatalog(listToRender) {
+            const container = document.getElementById("catalog-container");
+            if (!container) return;
+            container.innerHTML = "";
+            listToRender.forEach(v => {
+                container.innerHTML += `
+                    <div class="p-2.5 border rounded-xl flex justify-between items-center mb-1.5 shadow-sm">
+                        <div>
+                            <b class="font-bold">${v.name}</b><br>
+                            <span class="opacity-75">Miejsc: ${v.cap} | Napęd: ${v.prop}</span><br>
+                            <span class="text-emerald-600 font-extrabold">${v.price.toLocaleString()} PLN</span>
+                        </div>
+                        <button onclick="buyVehicleFromCatalog('${v.name}')" class="px-3 py-1 bg-amber-600 text-white rounded-lg font-bold text-xs">Kup</button>
+                    </div>`;
+            });
+            updateComposeSelects();
+        }
+
+        function filterVehicleCatalog() {
+            const query = document.getElementById('vehicle-search').value.toLowerCase();
+            renderCatalog(fullVehicleCatalog.filter(v => v.name.toLowerCase().includes(query)));
+        }
+
+        function updateComposeSelects() {
+            const trams = game.vehicles.filter(v => v.type === 'tram' && !v.isComposed);
+            ['compose-select-1', 'compose-select-2', 'compose-select-3'].forEach(id => {
+                const sel = document.getElementById(id);
+                if(sel) {
+                    sel.innerHTML = `<option value="">-- Wybierz tramwaj --</option>` + trams.map(t => `<option value="${t.instanceId}">${t.fleetNumber} ${t.name}</option>`).join('');
+                }
+            });
+        }
+
+        function composeTrain() {
+            const id1 = document.getElementById('compose-select-1').value;
+            const id2 = document.getElementById('compose-select-2').value;
+            const id3 = document.getElementById('compose-select-3').value;
+            if(!id1 || !id2) { showToast("Wybierz przynajmniej dwa tramwaje do składu!", "error"); return; }
+            
+            const v1 = game.vehicles.find(v => v.instanceId == id1);
+            const v2 = game.vehicles.find(v => v.instanceId == id2);
+            const v3 = id3 ? game.vehicles.find(v => v.instanceId == id3) : null;
+
+            if(!v1 || !v2 || (id3 && !v3)) { showToast("Wybrane pojazdy nie istnieją.", "error"); return; }
+            
+            const names = [v1.name, v2.name, ...(v3 ? [v3.name] : [])];
+            const count = names.length;
+            const uniqueTypes = [...new Set(names)];
+
+            let isValid = false;
+            if (uniqueTypes.length === 1) {
+                const model = uniqueTypes[0];
+                if ((model === 'Konstal N' && (count === 2 || count === 3)) ||
+                    (model === 'Konstal 105Na' && (count === 2 || count === 3)) ||
+                    (model === 'Konstal 105N2k/2000 (Sterowniczy + Doczepa)' && count === 2) ||
+                    (model === 'Konstal 13N' && (count === 2 || count === 3))) {
+                    isValid = true;
+                }
+            }
+
+            if(!isValid) {
+                showToast("Nieprawidłowa konfiguracja składu!", "error");
+                return;
+            }
+
+            const cleanNum1 = v1.fleetNumber.replace(/#/g, '').trim();
+            const cleanNum2 = v2.fleetNumber.replace(/#/g, '').trim();
+            const cleanNum3 = v3 ? v3.fleetNumber.replace(/#/g, '').trim() : null;
+
+            let composedFleetNumber = `#${cleanNum1} / #${cleanNum2}`;
+            if(cleanNum3) composedFleetNumber += ` / #${cleanNum3}`;
+
+            const originalComponents = [v1, v2, ...(v3 ? [v3] : [])];
+
+            game.vehicles = game.vehicles.filter(v => v.instanceId !== v1.instanceId && v.instanceId !== v2.instanceId && (!v3 || v.instanceId !== v3.instanceId));
+
+            const composedVehicle = {
+                instanceId: Date.now(),
+                fleetNumber: composedFleetNumber,
+                name: `Skład: ${names.join(' + ')}`,
+                cat: "Tramwaje",
+                price: v1.price + v2.price + (v3 ? v3.price : 0),
+                cap: v1.cap + v2.cap + (v3 ? v3.cap : 0),
+                type: "tram",
+                prop: "electric",
+                fuel: 100,
+                lineId: null,
+                depotId: null,
+                condition: Math.min(v1.condition, v2.condition, v3 ? v3.condition : 100),
+                dirtiness: Math.floor((v1.dirtiness + v2.dirtiness) / 2),
+                delay: 0,
+                repairFinishTime: 0,
+                faults: [],
+                isComposed: true,
+                originalComponents: originalComponents
+            };
+
+            game.vehicles.push(composedVehicle);
+            showToast("Połączono tramwaje w skład wielowagonowy!");
+            renderDepot();
+            renderSpecificFleetView();
+            updateComposeSelects();
+            updateMapStats();
+        }
+
+        function decomposeTrain(instanceId) {
+            const v = game.vehicles.find(item => item.instanceId === instanceId);
+            if(!v || !v.isComposed || !v.originalComponents) { showToast("To nie jest połączony skład tramwajowy!", "error"); return; }
+
+            v.originalComponents.forEach((comp, idx) => {
+                comp.instanceId = Date.now() + idx;
+                comp.lineId = null;
+                game.vehicles.push(comp);
+            });
+
+            game.vehicles = game.vehicles.filter(item => item.instanceId !== instanceId);
+
+            showToast("Rozłączono skład tramwajowy na pojazdy składowe!");
+            renderDepot();
+            renderSpecificFleetView();
+            updateComposeSelects();
+            updateMapStats();
+            closeVehicleFaultModal();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+            document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("border-amber-600", "text-amber-600"));
+            document.getElementById("section-" + tab).classList.remove("hidden");
+            event.currentTarget.classList.add("border-amber-600", "text-amber-600");
+
+            if(tab === 'map' && map) {
+                setTimeout(() => { map.invalidateSize(); updateMapObjects(); updateMapStats(); }, 150);
+            }
+            if(tab === 'lines') { renderLines(); }
+            if(tab === 'depot') { renderDepot(); updateComposeSelects(); }
+            if(tab === 'depots') { switchFleetSubTab(game.currentFleetSubTab || 'depots'); }
+            if(tab === 'market') { checkAndRefreshMarket(); renderMarketListings(); }
+            if(tab === 'finances') { renderFinancesTab(); }
+            if(tab === 'finance') updateFinanceScreen();
+            if(tab === 'map') renderStopsUpgrades();
+            if(tab === 'mail') updateMailBadge();
+        }
+
+        function switchFleetSubTab(subTab) {
+            game.currentFleetSubTab = subTab;
+            document.querySelectorAll(".fleet-subtab-content").forEach(el => el.classList.add("hidden"));
+            ['depots', 'bus', 'tram', 'trolley', 'metro', 'rail', 'tech'].forEach(t => {
+                const btn = document.getElementById(`subtab-btn-${t}`);
+                if(btn) {
+                    btn.className = (t === subTab) ? "px-4 py-2 bg-amber-600 text-white rounded-xl shadow font-bold" : "px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition font-bold";
+                }
+            });
+
+            if(subTab === 'depots') {
+                document.getElementById("fleet-subtab-depots").classList.remove("hidden");
+                renderDepotsManagement();
+            } else {
+                document.getElementById("fleet-subtab-vehicles").classList.remove("hidden");
+                renderSpecificFleetView();
+            }
+        }
+
+        function renderSpecificFleetView() {
+            const container = document.getElementById("fleet-specific-container");
+            if(!container) return;
+            const query = (document.getElementById("fleet-search-input").value || "").toLowerCase();
+            const sub = game.currentFleetSubTab;
+
+            let filtered = game.vehicles.filter(v => {
+                if(sub === 'bus' && v.type !== 'bus' && v.type !== 'coach') return false;
+                if(sub === 'tram' && v.type !== 'tram') return false;
+                if(sub === 'trolley' && v.type !== 'trolley') return false;
+                if(sub === 'metro' && v.type !== 'metro') return false;
+                if(sub === 'rail' && v.type !== 'rail') return false;
+                if(sub === 'tech' && !v.type.startsWith('tech_')) return false;
+                return true;
+            });
+
+            if(query) filtered = filtered.filter(v => v.name.toLowerCase().includes(query) || v.fleetNumber.toLowerCase().includes(query));
+
+            container.innerHTML = filtered.length === 0 ? '<div class="opacity-50 italic col-span-3">Brak pojazdów w tej kategorii.</div>' : filtered.map(v => {
+                let badgeColor = "bg-emerald-100 text-emerald-800 border-emerald-300";
+                if(v.condition < 50) badgeColor = "bg-rose-600 text-white border-rose-700";
+                else if(v.condition < 75) badgeColor = "bg-orange-500 text-white border-orange-600";
+                else if(v.condition < 90) badgeColor = "bg-amber-400 text-amber-950 border-amber-500";
+
+                let fuelLabel = "Paliwo";
+                if(v.prop === 'electric') fuelLabel = "Akumulator";
+                else if(v.prop === 'hydrogen') fuelLabel = "Wodór";
+                else if(v.prop === 'cng') fuelLabel = "Gaz CNG";
+
+                const nowSec = Date.now();
+                let inRepair = v.repairFinishTime && v.repairFinishTime > nowSec;
+                let remSec = inRepair ? Math.ceil((v.repairFinishTime - nowSec) / 1000) : 0;
+                let remMinReal = Math.ceil(remSec / 60);
+
+                if (v.dirtiness === undefined) v.dirtiness = Math.floor(Math.random() * 50);
+
+                return `
+                    <div class="border p-4 rounded-2xl app-card shadow-sm space-y-3">
+                        <div class="flex justify-between items-center cursor-pointer" onclick="openVehicleFaultModal(${v.instanceId})">
+                            <span class="font-extrabold text-amber-600">${v.fleetNumber}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badgeColor}">Stan: ${Math.round(v.condition)}%</span>
+                        </div>
+                        <div class="font-bold text-sm cursor-pointer" onclick="openVehicleFaultModal(${v.instanceId})">${v.name}</div>
+                        <div class="text-[11px] opacity-75 space-y-0.5 cursor-pointer" onclick="openVehicleFaultModal(${v.instanceId})">
+                            <div>${fuelLabel}: <b>${Math.round(v.fuel)}%</b> | Zabrudzenie: <b>${Math.round(v.dirtiness)}%</b></div>
+                            <div>Status: ${inRepair ? `<span class="text-rose-600 font-bold">W warsztacie (${remMinReal} min realnych)</span>` : (v.condition < 100 || v.fuel < 20 || v.dirtiness > 60 ? '<span class="text-orange-600 font-bold">Wymaga uwagi (Kliknij)</span>' : '<span class="text-emerald-600 font-bold">Gotowy</span>')}</div>
+                        </div>
+                        <div class="flex gap-2 pt-2 border-t">
+                            <button onclick="openVehicleFaultModal(${v.instanceId})" class="flex-1 py-1.5 bg-amber-600 text-white rounded font-bold text-[11px]">Serwis</button>
+                            ${v.isComposed ? `<button onclick="decomposeTrain(${v.instanceId})" class="flex-1 py-1.5 bg-orange-600 text-white rounded font-bold text-[11px]">Rozłącz</button>` : ''}
+                            <button onclick="openSellModal(${v.instanceId})" class="flex-1 py-1.5 bg-rose-600 text-white rounded font-bold text-[11px]">Sprzedaj</button>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function getVehicleFaults(v) {
+            if (v.condition >= 95) return ["• Brak usterek, pojazd w pełni sprawny."];
+
+            const lightFaults = ["Nie działające światła", "Nie działające kierunkowskazy", "Nie działające wycieraczki", "Obluzowany fotel kierowcy", "Nie trzymające się fotele pasażerskie", "Obluzowane poręcze"];
+            const mediumFaults = ["Zacinające się drzwi", "Nie działająca klimatyzacja", "Nie działające ogrzewanie", "Zepsute okna"];
+            const heavyFaults = [];
+            if (v.type === 'tram' || v.type === 'trolley' || v.type === 'rail' || v.type === 'metro') {
+                heavyFaults.push("Zepsuty odbierak prądu", "Iskrzenia odbieraka");
+            }
+            if (v.type === 'bus' || v.type === 'coach' || v.type === 'trolley') {
+                heavyFaults.push("Blokująca się skrzynia biegów");
+            }
+            heavyFaults.push("Zepsuty silnik");
+
+            let selected = [];
+            if (v.condition < 85) selected.push(lightFaults[Math.floor(Math.random() * lightFaults.length)]);
+            if (v.condition < 60) selected.push(mediumFaults[Math.floor(Math.random() * mediumFaults.length)]);
+            if (v.condition < 35 && heavyFaults.length > 0) selected.push(heavyFaults[Math.floor(Math.random() * heavyFaults.length)]);
+
+            selected = [...new Set(selected)];
+            if(selected.length === 0) selected.push("• Drobne zużycie eksploatacyjne podzespołów");
+            return selected.map(f => `• ${f}`);
+        }
+
+        function openVehicleFaultModal(instanceId) {
+            const v = game.vehicles.find(item => item.instanceId === instanceId);
+            if(!v) return;
+            const modalBody = document.getElementById("vehicle-fault-modal-body");
+            const modalAction = document.getElementById("vehicle-fault-action");
+
+            let fuelLabel = "Paliwo";
+            if(v.prop === 'electric') fuelLabel = "Akumulator";
+            else if(v.prop === 'hydrogen') fuelLabel = "Wodór";
+            else if(v.prop === 'cng') fuelLabel = "Gaz CNG";
+
+            const faultsArr = getVehicleFaults(v);
+            const faultListHTML = faultsArr.join('<br>');
+
+            const damageFactor = (100 - v.condition) / 100;
+            const repairCost = Math.round((100 - v.condition) * 200 * (1 + damageFactor * 1.5));
+            const refuelCost = Math.round((100 - v.fuel) * 50);
+            const washCost = Math.round((v.dirtiness || 0) * 150);
+
+            const nowSec = Date.now();
+            let inRepair = v.repairFinishTime && v.repairFinishTime > nowSec;
+            let remSec = inRepair ? Math.ceil((v.repairFinishTime - nowSec) / 1000) : 0;
+            let remMinReal = Math.ceil(remSec / 60);
+
+            if (v.dirtiness === undefined) v.dirtiness = 0;
+
+            modalBody.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex justify-between"><span>Model:</span><b>${v.name}</b></div>
+                    <div class="flex justify-between items-center bg-slate-500/10 p-2 rounded-xl">
+                        <span>Nr taborowy:</span>
+                        <div class="flex gap-1">
+                            <input type="text" id="edit-fleet-num-${v.instanceId}" value="${v.fleetNumber}" class="px-2 py-1 border rounded text-xs font-bold outline-none w-28">
+                            <button onclick="updateFleetNumber(${v.instanceId})" class="px-2.5 py-1 bg-amber-600 text-white rounded font-bold text-xs">Zmień</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between"><span>Stan techniczny:</span><b class="${v.condition < 50 ? 'text-rose-600' : 'text-emerald-600'}">${Math.round(v.condition)}%</b></div>
+                    <div class="flex justify-between"><span>Poziom (${fuelLabel}):</span><b>${Math.round(v.fuel)}%</b></div>
+                    <div class="flex justify-between"><span>Zabrudzenie:</span><b class="text-amber-600">${Math.round(v.dirtiness)}%</b></div>
+                    ${inRepair ? `<div class="p-2 bg-rose-500/10 text-rose-600 font-bold rounded-xl text-center">Pojazd jest w warsztacie w naprawie (pozostało ok. ${remMinReal} min realnych)</div>` : ''}
+                    <div class="border-t pt-2">
+                        <span class="font-bold text-amber-600 block mb-1">Szczegółowa Diagnoza Warsztatowa:</span>
+                        <div class="text-[11px] opacity-90 leading-relaxed bg-slate-500/10 p-2.5 rounded-xl space-y-1">${faultListHTML}</div>
+                    </div>
+                </div>`;
+
+            let actionButtonsHTML = `
+                <div class="space-y-2">
+                    <button onclick="repairVehicle(${v.instanceId}, ${repairCost})" class="w-full py-2 bg-emerald-600 text-white font-bold rounded-xl shadow">Napraw pojazd w warsztacie (${repairCost.toLocaleString()} PLN)</button>
+                    <button onclick="refuelVehicle(${v.instanceId}, ${refuelCost})" class="w-full py-2 bg-amber-600 text-white font-bold rounded-xl shadow">Zatankuj / Naładuj (${refuelCost.toLocaleString()} PLN)</button>
+                    <button onclick="washVehicle(${v.instanceId}, ${washCost})" class="w-full py-2 bg-teal-600 text-white font-bold rounded-xl shadow">Umyj pojazd w myjni (${washCost.toLocaleString()} PLN)</button>
+            `;
+            if (v.isComposed) {
+                actionButtonsHTML += `<button onclick="decomposeTrain(${v.instanceId})" class="w-full py-2 bg-orange-600 text-white font-bold rounded-xl shadow">Rozłącz skład na pojedyncze wagony</button>`;
+            }
+            actionButtonsHTML += `</div>`;
+
+            modalAction.innerHTML = actionButtonsHTML;
+            document.getElementById("vehicle-fault-modal").classList.remove("hidden");
+        }
+
+        function updateFleetNumber(instanceId) {
+            const input = document.getElementById(`edit-fleet-num-${instanceId}`);
+            if(!input) return;
+            const newNum = input.value.trim();
+            if(!newNum) { showToast("Numer taborowy nie może być pusty!", "error"); return; }
+            const v = game.vehicles.find(item => item.instanceId === instanceId);
+            if(v) {
+                v.fleetNumber = newNum;
+                showToast("Zmieniono numer taborowy pomyślnie!");
+                renderSpecificFleetView();
+                renderDepot();
+            }
+        }
+
+        function closeVehicleFaultModal() { document.getElementById("vehicle-fault-modal").classList.add("hidden"); }
+
+        function checkWorkshopCapacity(depotId) {
+            if(!depotId) return { allowed: false, msg: "Pojazd musi być przypisany do zajezdni z warsztatem!" };
+            const d = game.depots.find(item => item.id === depotId);
+            if(!d) return { allowed: false, msg: "Zajezdnia nie istnieje!" };
+            const workshopLevel = d.workshopLevel || 0;
+            if (workshopLevel === 0) return { allowed: false, msg: "Zajezdnia nie posiada aktywnego Warsztatu / Hali OC (Poziom 0)! Rozbuduj warsztat w zajezdni." };
+            
+            const maxConcurrent = workshopLevel + 1;
+            const nowSec = Date.now();
+            const currentInRepair = game.vehicles.filter(v => v.depotId === depotId && v.repairFinishTime && v.repairFinishTime > nowSec).length;
+
+            if (currentInRepair >= maxConcurrent) {
+                return { allowed: false, msg: `Warsztat w tej zajezdni ma zajęte wszystkie stanowiska (${currentInRepair}/${maxConcurrent})!` };
+            }
+            return { allowed: true };
+        }
+
+        function repairVehicle(id, cost) {
+            const v = game.vehicles.find(item => item.instanceId === id);
+            if(!v) return;
+
+            const check = checkWorkshopCapacity(v.depotId);
+            if(!check.allowed) { showToast(check.msg, "error"); return; }
+
+            if(game.money < cost) { showToast("Brak środków!", "error"); return; }
+            game.money -= cost;
+
+            let minRealMinutes = 2;
+            let maxRealMinutes = 10;
+
+            if (v.type === 'bus' || v.type === 'coach' || v.type.startsWith('tech_')) {
+                minRealMinutes = 2; maxRealMinutes = 10;
+            } else if (v.type === 'trolley') {
+                minRealMinutes = 3; maxRealMinutes = 15;
+            } else if (v.type === 'tram') {
+                minRealMinutes = 5; maxRealMinutes = 25;
+            } else if (v.type === 'rail' || v.type === 'metro') {
+                minRealMinutes = 15; maxRealMinutes = (v.type === 'metro' ? 50 : 40);
+            }
+
+            const damageRatio = (100 - v.condition) / 100;
+            const repairRealMinutes = Math.max(minRealMinutes, Math.round(minRealMinutes + damageRatio * (maxRealMinutes - minRealMinutes)));
+            const finishTime = Date.now() + repairRealMinutes * 60 * 1000;
+
+            v.repairFinishTime = finishTime;
+            v.condition = 100;
+
+            if(v.lineId) {
+                v.lineId = null;
+                showToast(`Pojazd trafił do warsztatu na ok. ${repairRealMinutes} min realnych. Odczepiono z linii i wstrzymano zarobki!`, "error");
+            } else {
+                showToast(`Pojazd w warsztacie! Czas naprawy: ok. ${repairRealMinutes} min realnych.`);
+            }
+
+            updateBalance(); updateMapStats(); closeVehicleFaultModal(); renderSpecificFleetView(); renderLines();
+        }
+
+        function refuelVehicle(id, cost) {
+            if(game.money < cost) { showToast("Brak środków!", "error"); return; }
+            game.money -= cost;
+            const v = game.vehicles.find(item => item.instanceId === id);
+            if(v) v.fuel = 100;
+            updateBalance(); updateMapStats(); closeVehicleFaultModal(); renderSpecificFleetView(); showToast("Pojazd zatankowany / naładowany!");
+        }
+
+        function washVehicle(id, cost) {
+            const v = game.vehicles.find(item => item.instanceId === id);
+            if(!v) return;
+            const d = v.depotId ? game.depots.find(item => item.id === v.depotId) : null;
+            if(!d || !d.hasWash) { showToast("Pojazd musi być przypisany do zajezdni posiadającej Myjnię!", "error"); return; }
+            if(game.money < cost) { showToast("Brak środków!", "error"); return; }
+            game.money -= cost;
+            v.dirtiness = 0;
+            updateBalance(); updateMapStats(); closeVehicleFaultModal(); renderSpecificFleetView(); showToast("Pojazd został umyty w myjni!");
+        }
+
+        function initMap() {
+            if (map) map.remove();
+            map = L.map('map').setView([game.baseCity.lat, game.baseCity.lng], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', { maxZoom: 20 }).addTo(map);
+
+            map.on('click', function(e) {
+                const addressStr = `ul. Główna ${Math.floor(1 + Math.random()*50)}, ${game.baseCity.name} (Pusty Plac)`;
+                document.getElementById('infra-address').value = addressStr;
+                document.getElementById('infra-lat').value = e.latlng.lat.toFixed(5);
+                document.getElementById('infra-lng').value = e.latlng.lng.toFixed(5);
+                if(selectedMarker) map.removeLayer(selectedMarker);
+                selectedMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup(addressStr).openPopup();
+                if(!document.getElementById('infra-name').value || document.getElementById('infra-name').value === "Wpisz nazwę przystanku / zajezdni") {
+                    document.getElementById('infra-name').value = "Nowy obiekt";
+                }
+            });
+            updateMapObjects();
+            setTimeout(() => { if(map) map.invalidateSize(); }, 200);
+        }
+
+        function handleAddInfrastructure(e) {
+            e.preventDefault();
+            const name = document.getElementById('infra-name').value;
+            const address = document.getElementById('infra-address').value;
+            const type = document.getElementById('infra-type').value;
+            const lat = parseFloat(document.getElementById('infra-lat').value);
+            const lng = parseFloat(document.getElementById('infra-lng').value);
+
+            if(isNaN(lat) || isNaN(lng) || !address) { showToast("Kliknij wolny plac na mapie!", "error"); return; }
+
+            if(type.includes('Zajezdnia') || type.includes('Stacja Techniczna') || type.includes('STP')) {
+                let cost = 0;
+                let isFree = false;
+                if (type.includes('Autobusowo') && !game.depots.some(d => d.type.includes('Autobusowo'))) isFree = true;
+                else if (type.includes('Tramwajowa') && !game.depots.some(d => d.type.includes('Tramwajowa'))) isFree = true;
+                else if (type.includes('STP') && !game.depots.some(d => d.type.includes('STP'))) isFree = true;
+                else cost = type.includes('Autobusowo') ? 150000 : (type.includes('Tramwajowa') ? 300000 : 800000);
+
+                if(!isFree && game.money < cost) { showToast("Brak środków!", "error"); return; }
+                game.money -= cost;
+                game.depots.push({ 
+                    id: Date.now(), name, type, address, lat, lng,
+                    fuelLevel: 1, hasWash: false, workshopLevel: 0
+                });
+                showToast(isFree ? "Zajezdnia wybudowana ZA DARMO!" : `Zbudowano za ${cost.toLocaleString()} PLN!`);
+            } else {
+                game.stops.push({ id: Date.now(), name, type, address, lat, lng, upgrades: { bay: false, sip: false, shelter: false, trolleyWire: false } });
+                showToast(`Postawiono przystanek: ${name}`);
+            }
+
+            updateBalance(); updateMapObjects(); updateMapStats(); renderStopsUpgrades();
+            if(selectedMarker) map.removeLayer(selectedMarker);
+            document.getElementById('infra-name').value = ""; document.getElementById('infra-address').value = "";
+        }
+
+        function updateMapObjects() {
+            if(!map) return;
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker && layer !== selectedMarker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            game.stops.forEach(s => L.marker([s.lat, s.lng]).addTo(map).bindPopup(`<b>${s.name}</b><br>${s.address}`));
+            game.depots.forEach(d => {
+                const depotIcon = L.divIcon({ html: `<div style="background:#b45309; color:white; padding:4px 6px; border-radius:6px; font-size:10px; font-weight:bold;"><i class="fa-solid fa-warehouse"></i> ${d.name}</div>`, className: 'depot-marker' });
+                L.marker([d.lat, d.lng], { icon: depotIcon }).addTo(map).bindPopup(`<b>Zajezdnia: ${d.name}</b>`);
+            });
+        }
+
+        function updateMapStats() {
+            let busStops = game.stops.filter(s => s.type.includes('Autobusowy')).length;
+            let tramStops = game.stops.filter(s => s.type.includes('Tramwajowy')).length;
+            let trolleyStops = game.stops.filter(s => s.type.includes('Trolejbusowy') || s.upgrades?.trolleyWire).length;
+
+            let busLines = game.lines.filter(l => l.category.includes('Autobusowa')).length;
+            let tramLines = game.lines.filter(l => l.category.includes('Tramwajowa')).length;
+            let trolleyLines = game.lines.filter(l => l.category.includes('Trolejbusowa')).length;
+
+            let railConn = game.stops.filter(s => s.type.includes('Kolejowa') || s.type.includes('Metra')).length;
+            let railSets = game.vehicles.filter(v => v.type === 'rail' || v.type === 'metro' || v.isComposed).length;
+
+            let totalRev = game.lines.reduce((acc, l) => acc + (l.totalRevenue || 0), 0);
+            let totalExp = game.lines.reduce((acc, l) => acc + (l.totalExpenses || 0), 0);
+
+            document.getElementById("stat-bus-stops").innerText = busStops;
+            document.getElementById("stat-tram-stops").innerText = tramStops;
+            document.getElementById("stat-trolley-stops").innerText = trolleyStops;
+            document.getElementById("stat-bus-lines").innerText = busLines;
+            document.getElementById("stat-tram-lines").innerText = tramLines;
+            document.getElementById("stat-trolley-lines").innerText = trolleyLines;
+            document.getElementById("stat-rail-conn").innerText = railConn;
+            document.getElementById("stat-rail-sets").innerText = railSets;
+
+            document.getElementById("stat-total-revenue").innerText = totalRev.toLocaleString() + " PLN";
+            document.getElementById("stat-total-expenses").innerText = totalExp.toLocaleString() + " PLN";
+        }
+
+        function renderStopsUpgrades() {
+            const container = document.getElementById("stops-upgrades-container");
+            if(!container) return;
+            const query = (document.getElementById("map-stops-search")?.value || "").toLowerCase();
+            const filterType = document.getElementById("map-stops-filter-type")?.value || "";
+
+            let filtered = game.stops.filter(s => {
+                if(query && !s.name.toLowerCase().includes(query)) return false;
+                if(filterType && !s.type.includes(filterType)) return false;
+                return true;
+            });
+
+            container.innerHTML = filtered.length === 0 ? '<div class="opacity-50 italic col-span-3">Brak przystanków spełniających kryteria.</div>' : filtered.map(s => {
+                const isBusStop = s.type.includes('Autobusowy');
+                return `
+                <div class="border p-3 rounded-xl space-y-2 app-card flex flex-col justify-between">
+                    <div>
+                        <b class="block text-amber-600">${s.name}</b>
+                        <span class="text-[10px] opacity-75">${s.type}</span>
+                    </div>
+                    <div class="space-y-1 text-[11px] pt-1">
+                        ${isBusStop ? `<label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" ${s.upgrades?.trolleyWire ? 'checked' : ''} onchange="toggleStopUpgrade(${s.id}, 'trolleyWire', 2000)" class="accent-amber-600"> Sieć trakcyjna (2k)</label>` : ''}
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" ${s.upgrades?.bay ? 'checked' : ''} onchange="toggleStopUpgrade(${s.id}, 'bay', 15000)" class="accent-amber-600"> Zatoczka autobusowa (15k)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" ${s.upgrades?.sip ? 'checked' : ''} onchange="toggleStopUpgrade(${s.id}, 'sip', 8000)" class="accent-amber-600"> SIP (8k)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" ${s.upgrades?.shelter ? 'checked' : ''} onchange="toggleStopUpgrade(${s.id}, 'shelter', 12000)" class="accent-amber-600"> Wiata (12k)</label>
+                    </div>
+                    <button onclick="deleteStop(${s.id})" class="mt-2 w-full py-1.5 bg-rose-600 text-white rounded font-bold text-xs">Usuń</button>
+                </div>`;
+            }).join('');
+        }
+
+        function toggleStopUpgrade(stopId, upgradeKey, cost) {
+            const s = game.stops.find(item => item.id === stopId);
+            if(!s) return;
+            if(!s.upgrades) s.upgrades = {};
+            if(!s.upgrades[upgradeKey]) {
+                if(game.money < cost) { showToast("Brak środków!", "error"); renderStopsUpgrades(); return; }
+                game.money -= cost; s.upgrades[upgradeKey] = true;
+            } else {
+                s.upgrades[upgradeKey] = false; game.money += Math.round(cost * 0.5);
+            }
+            updateBalance(); updateMapStats(); renderStopsUpgrades();
+        }
+
+        function deleteStop(id) {
+            game.stops = game.stops.filter(s => s.id !== id);
+            renderStopsUpgrades();
+            updateMapObjects();
+            updateMapStats();
+            showToast("Przystanek usunięty.");
+        }
+
+        function openStopPickerModal() {
+            game.tempSelectedStops = [];
+            renderStopPickerList();
+            document.getElementById("stop-picker-modal").classList.remove("hidden");
+        }
+        function closeStopPickerModal() { document.getElementById("stop-picker-modal").classList.add("hidden"); }
+
+        function renderStopPickerList() {
+            const container = document.getElementById("picker-stops-container");
+            if(!container) return;
+            const query = (document.getElementById("picker-search")?.value || "").toLowerCase();
+            const currentCat = document.getElementById("line-category")?.value || "";
+
+            let filtered = game.stops.filter(s => {
+                if(query && !s.name.toLowerCase().includes(query)) return false;
+
+                if (currentCat.includes('Tramwajowa')) {
+                    if (!s.type.includes('Tramwajowy')) return false;
+                } else if (currentCat.includes('Autobusowa') || currentCat.includes('Regionalna')) {
+                    if (!s.type.includes('Autobusowy')) return false;
+                } else if (currentCat.includes('Trolejbusowa')) {
+                    if (!s.type.includes('Trolejbusowy') && (!s.type.includes('Autobusowy') || !s.upgrades?.trolleyWire)) return false;
+                } else if (currentCat.includes('Metra')) {
+                    if (!s.type.includes('Metra')) return false;
+                } else if (currentCat.includes('Kolejowa')) {
+                    if (!s.type.includes('Kolejowa')) return false;
+                }
+
+                return true;
+            });
+
+            container.innerHTML = filtered.length === 0 ? '<div class="opacity-50 italic">Brak odpowiednich przystanków dla tej kategorii linii. Upewnij się, że postawiłeś odpowiednie obiekty na mapie (np. przystanek z siecią trakcyjną dla linii trolejbusowej).</div>' : filtered.map(s => {
+                const count = game.tempSelectedStops.filter(item => item.id === s.id).length;
+                const isLoop = game.tempSelectedStops.some(item => item.id === s.id && item.isLoop);
+
+                return `
+                    <div class="p-2.5 border rounded-xl flex justify-between items-center transition ${count > 0 ? 'border-amber-600 bg-amber-500/10' : 'hover:bg-slate-500/5'}">
+                        <div class="flex-grow cursor-pointer" onclick="addStopToTempSelection(${s.id})">
+                            <div><b>${s.name}</b> ${count > 0 ? `<span class="px-1.5 py-0.5 bg-amber-600 text-white rounded-full text-[10px]">x${count}</span>` : ''}</div>
+                            <span class="text-[10px] opacity-75">${s.type} ${s.upgrades?.trolleyWire ? '(Posiada sieć trakcyjną)' : ''}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            ${count > 0 ? `
+                                <label class="flex items-center gap-1 text-[10px] font-bold cursor-pointer text-amber-600" title="Kliknij, aby oznaczyć pętlę w drugą stronę">
+                                    <input type="checkbox" ${isLoop ? 'checked' : ''} onchange="toggleStopLoopInPicker(${s.id})" class="accent-amber-600"> Pętla
+                                </label>
+                                <button onclick="addStopToTempSelection(${s.id})" class="px-2.5 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold">+ Dodaj</button>
+                                <button onclick="removeStopFromTempSelection(${s.id})" class="px-2.5 py-1 bg-rose-600 text-white rounded text-[10px] font-bold">- Usuń</button>
+                            ` : `
+                                <button onclick="addStopToTempSelection(${s.id})" class="px-3 py-1 bg-amber-600 text-white rounded text-[10px] font-bold">+ Wybierz</button>
+                            `}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            document.getElementById("picker-selected-summary").innerText = `Wybrano elementów trasy: ${game.tempSelectedStops.length}`;
+            renderLineStopsPreview();
+        }
+
+        function onLineCategoryChange() {
+            game.tempSelectedStops = [];
+            renderLineStopsPreview();
+        }
+
+        function addStopToTempSelection(stopId) {
+            game.tempSelectedStops.push({ id: stopId, isLoop: false });
+            renderStopPickerList();
+        }
+
+        function removeStopFromTempSelection(stopId) {
+            const idx = game.tempSelectedStops.map(i => i.id).lastIndexOf(stopId);
+            if(idx > -1) {
+                game.tempSelectedStops.splice(idx, 1);
+            }
+            renderStopPickerList();
+        }
+
+        function toggleStopLoopInPicker(stopId) {
+            game.tempSelectedStops.forEach(item => {
+                if(item.id === stopId) {
+                    item.isLoop = !item.isLoop;
+                }
+            });
+            renderStopPickerList();
+        }
+
+        function clearStopPickerSelection() {
+            game.tempSelectedStops = [];
+            renderStopPickerList();
+        }
+
+        function confirmStopPickerSelection() {
+            if(game.tempSelectedStops.length < 2) { showToast("Wybierz co najmniej 2 przystanki do trasy!", "error"); return; }
+            renderLineStopsPreview();
+            closeStopPickerModal();
+        }
+
+        function renderLineStopsPreview() {
+            const preview = document.getElementById("line-stops-preview");
+            const countEl = document.getElementById("line-stops-count");
+            if(!preview) return;
+            countEl.innerText = game.tempSelectedStops.length;
+            if(game.tempSelectedStops.length === 0) {
+                preview.innerHTML = '<li>Brak przystanków</li>';
+                return;
+            }
+            preview.innerHTML = game.tempSelectedStops.map((item, idx) => {
+                const s = game.stops.find(st => st.id === item.id);
+                const isEndpointOrLoop = (idx === 0) || (idx === game.tempSelectedStops.length - 1) || item.isLoop;
+                const stopName = s ? s.name : 'Nieznany';
+                return `<li class="${isEndpointOrLoop ? 'font-bold text-amber-600' : ''}"><b>[${idx+1}]</b> ${stopName} ${item.isLoop ? '(Pętla powrotna)' : ''}</li>`;
+            }).join('');
+        }
+
+        function handleCreateLine(e) {
+            e.preventDefault();
+            if(game.tempSelectedStops.length < 2) { showToast("Wybierz min. 2 przystanki!", "error"); return; }
+
+            const actualStops = game.tempSelectedStops.map(item => {
+                const s = game.stops.find(st => st.id === item.id);
+                return s ? { ...s, isLoop: item.isLoop } : null;
+            }).filter(Boolean);
+
+            game.lines.push({
+                id: Date.now(),
+                number: document.getElementById('line-number').value,
+                route: document.getElementById('line-route').value,
+                category: document.getElementById('line-category').value,
+                startTime: document.getElementById('line-start-time').value,
+                endTime: document.getElementById('line-end-time').value,
+                stops: actualStops,
+                totalRevenue: 0,
+                totalExpenses: 0,
+                hourlyMultiplier: 1.0,
+                hourlyExpenseMultiplier: 1.0
+            });
+            game.tempSelectedStops = [];
+            document.getElementById('line-stops-preview').innerHTML = '<li>Brak przystanków</li>';
+            document.getElementById('line-stops-count').innerText = "0";
+            renderLines(); 
+            updateMapStats();
+            showToast("Utworzono linię!");
+        }
+
+        function getMaxVehiclesForLine(l) {
+            const numStops = l.stops.length;
+            const cat = l.category;
+            if(cat.includes('Metra')) return Math.ceil(numStops / 2);
+            if(cat.includes('Kolejowa')) return Math.ceil(numStops / 20);
+            if(cat.includes('Regionalna')) return Math.ceil(numStops / 4);
+            return Math.ceil(numStops / 3);
+        }
+
+        function isLineActiveAtTime(l, currentMinutes) {
+            if(!l.startTime || !l.endTime) return true;
+            const [startH, startM] = l.startTime.split(':').map(Number);
+            const [endH, endM] = l.endTime.split(':').map(Number);
+            const startTotal = startH * 60 + startM;
+            const endTotal = endH * 60 + endM;
+
+            if (startTotal <= endTotal) {
+                return currentMinutes >= startTotal && currentMinutes <= endTotal;
+            } else {
+                return currentMinutes >= startTotal || currentMinutes <= endTotal;
+            }
+        }
+
+        function calculateLineHourlyIncome(l) {
+            const assigned = game.vehicles.filter(v => v.lineId === l.id && (!v.repairFinishTime || v.repairFinishTime <= Date.now()));
+            if(assigned.length === 0) return 0;
+            let baseInc = 0;
+            assigned.forEach(v => {
+                let vInc = (v.cap * l.stops.length * 5);
+                l.stops.forEach(s => {
+                    if(s.upgrades) {
+                        if(s.upgrades.bay) vInc *= 1.15;
+                        if(s.upgrades.sip) vInc *= 1.10;
+                        if(s.upgrades.shelter) vInc *= 1.12;
+                    }
+                });
+                baseInc += vInc;
+            });
+            return Math.round(baseInc * (l.hourlyMultiplier || 1.0));
+        }
+
+        function calculateLineHourlyExpense(l) {
+            const assigned = game.vehicles.filter(v => v.lineId === l.id && (!v.repairFinishTime || v.repairFinishTime <= Date.now()));
+            if(assigned.length === 0) return 0;
+            const baseInc = calculateLineHourlyIncome(l) / (l.hourlyMultiplier || 1.0);
+            const baseExp = baseInc * 0.8;
+            return Math.round(baseExp * (l.hourlyExpenseMultiplier || 1.0));
+        }
+
+        function isRushHour(minutes) {
+            return (minutes >= 420 && minutes <= 540) || (minutes >= 870 && minutes <= 1080);
+        }
+
+        function updateVehicleDelays() {
+            if (game.gameMinutes % 5 !== 0) return;
+
+            game.vehicles.forEach(v => {
+                const nowSec = Date.now();
+                if(!v.lineId || (v.repairFinishTime && v.repairFinishTime > nowSec)) {
+                    v.currentDelay = 0;
+                    return;
+                }
+                const l = game.lines.find(line => line.id === v.lineId);
+                const stopCount = l ? l.stops.length : 5;
+
+                let targetDelay = 0;
+                if(isRushHour(game.gameMinutes)) {
+                    let factor = Math.min(2.0, 1.0 + (stopCount * 0.05));
+                    if(v.type === 'bus' || v.type === 'coach' || v.type === 'trolley') {
+                        targetDelay = Math.floor((12 + Math.random() * 10) * factor);
+                    } else if(v.type === 'tram') {
+                        targetDelay = Math.floor((4 + Math.random() * 6) * factor);
+                    } else {
+                        targetDelay = Math.floor(Math.random() * 2);
+                    }
+                } else {
+                    targetDelay = Math.floor(-1 + Math.random() * 5);
+                }
+
+                if(v.currentDelay === undefined) v.currentDelay = 0;
+                if(v.currentDelay < targetDelay) v.currentDelay += 1;
+                else if(v.currentDelay > targetDelay) v.currentDelay -= 1;
+            });
+        }
+
+        function getDelayColorClass(delay) {
+            if (delay < 0) return "text-blue-500";
+            if (delay === 0 || (delay >= 1 && delay <= 3)) return "text-emerald-500 font-bold";
+            if (delay >= 4 && delay <= 9) return "text-orange-500 font-bold";
+            return "text-rose-600 font-bold";
+        }
+
+        function renderLines() {
+            if (document.activeElement && document.activeElement.id && document.activeElement.id.startsWith("assign-select-")) {
+                return;
+            }
+
+            const container = document.getElementById('lines-list-container');
+            if(!container) return;
+            container.innerHTML = game.lines.length === 0 ? '<div class="opacity-50 italic">Brak linii.</div>' : game.lines.map(l => {
+                const nowSec = Date.now();
+                const assigned = game.vehicles.filter(v => v.lineId === l.id);
+                const maxV = getMaxVehiclesForLine(l);
+                const isActiveNow = isLineActiveAtTime(l, game.gameMinutes);
+                
+                const currentHourlyIncome = isActiveNow ? calculateLineHourlyIncome(l) : 0;
+                const currentHourlyExpense = isActiveNow ? calculateLineHourlyExpense(l) : 0;
+
+                const routeStopsHTML = l.stops.map((s, idx) => {
+                    const isBold = (idx === 0) || (idx === l.stops.length - 1) || s.isLoop;
+                    const stopName = s.name + (s.isLoop ? ' (Pętla)' : '');
+                    return isBold ? `<b>${stopName}</b>` : stopName;
+                }).join(' - ');
+
+                const compatibleVehicles = game.vehicles.filter(v => {
+                    const cat = l.category;
+                    const vType = v.type;
+                    const inRepair = v.repairFinishTime && v.repairFinishTime > nowSec;
+                    if (inRepair) return false;
+
+                    if (cat.includes('Autobusowa') || cat.includes('Regionalna')) {
+                        return vType === 'bus' || vType === 'coach';
+                    }
+                    if (cat.includes('Trolejbusowa')) {
+                        return vType === 'trolley' || vType === 'bus' || vType === 'coach';
+                    }
+                    if (cat.includes('Tramwajowa')) {
+                        return vType === 'tram';
+                    }
+                    if (cat.includes('Metra')) {
+                        return vType === 'metro';
+                    }
+                    if (cat.includes('Kolejowa')) {
+                        return vType === 'rail';
+                    }
+                    return false;
+                });
+
+                return `
+                    <div class="border p-4 rounded-2xl space-y-3 app-card shadow-sm">
+                        <div class="flex justify-between items-center">
+                            <span class="bg-amber-600 text-white font-extrabold px-3 py-1 rounded-lg text-xs">Linia ${l.number} (${l.category}) [<b>${assigned.length}/${maxV}</b>]</span> 
+                            <b class="text-sm">${l.route}</b>
+                            <button type="button" onclick="deleteLine(${l.id})" class="text-rose-500 font-bold text-xs"><i class="fa-solid fa-trash"></i> Usuń</button>
+                        </div>
+                        <div class="flex justify-between items-center text-[11px] opacity-75">
+                            <span>Godziny kursowania: <b>${l.startTime || '00:00'} - ${l.endTime || '23:59'}</b></span>
+                            <span class="${isActiveNow ? 'text-emerald-600 font-bold' : 'text-rose-500 font-bold'}">${isActiveNow ? '• Kursuje teraz' : '• Poza godzinami (postój)'}</span>
+                        </div>
+                        <div class="text-[11px] flex justify-between font-bold border-b pb-2">
+                            <span class="text-emerald-600">Łączny przychód: +${(l.totalRevenue || 0).toLocaleString()} PLN</span>
+                            <span class="text-emerald-600 font-extrabold">Zarobek/h: +${currentHourlyIncome.toLocaleString()} PLN</span>
+                            <span class="text-rose-600">Koszt/h: -${currentHourlyExpense.toLocaleString()} PLN</span>
+                        </div>
+                        <div class="text-xs opacity-90 py-1 bg-slate-500/5 p-2 rounded-xl">
+                            <b>Przebieg trasy:</b> ${routeStopsHTML}
+                        </div>
+                        <div class="space-y-1">
+                            ${assigned.map(v => {
+                                const inRep = v.repairFinishTime && v.repairFinishTime > nowSec;
+                                const delay = v.currentDelay !== undefined ? v.currentDelay : 0;
+                                const delayColor = getDelayColorClass(delay);
+                                let delayText = inRep ? "<span class='text-rose-600 font-bold'>W warsztacie (wstrzymany zarobek)</span>" : (delay === 0 ? "Brak opóźnienia" : (delay > 0 ? `${delay} min opóźnienia` : `${Math.abs(delay)} min przyspieszenia`));
+                                return `
+                                    <div class="flex justify-between p-2 border rounded-xl items-center text-xs">
+                                        <span><b>${v.fleetNumber}</b> ${v.name} (${delayText})</span> 
+                                        <button type="button" onclick="unassignVehicle(${v.instanceId})" class="text-rose-500 font-bold">Odczep</button>
+                                    </div>`;
+                            }).join('')}
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <select id="assign-select-${l.id}" class="w-full text-xs p-2 border rounded-xl outline-none">
+                                <option value="">-- Wybierz kompatybilny pojazd z floty --</option>
+                                ${compatibleVehicles.map(v => `<option value="${v.instanceId}">${v.fleetNumber} ${v.name} ${v.lineId ? '(Przypisany)' : ''}</option>`).join('')}
+                            </select>
+                            <button type="button" onclick="assignVehicleToLine(${l.id})" class="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold shadow">Przypisz</button>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function deleteLine(id) {
+            game.vehicles.forEach(v => { if(v.lineId === id) v.lineId = null; });
+            game.lines = game.lines.filter(l => l.id !== id);
+            renderLines();
+            updateMapStats();
+        }
+
+        function assignVehicleToLine(lineId) {
+            const sel = document.getElementById(`assign-select-${lineId}`);
+            if(!sel || !sel.value) { showToast("Wybierz pojazd z listy!", "error"); return; }
+            const v = game.vehicles.find(item => item.instanceId === parseInt(sel.value));
+            const l = game.lines.find(item => item.id === lineId);
+            if(!v || !l) return;
+
+            const nowSec = Date.now();
+            if (v.repairFinishTime && v.repairFinishTime > nowSec) {
+                showToast("Pojazd jest w warsztacie w naprawie i nie może jeździć po linii!", "error");
+                return;
+            }
+
+            const cat = l.category;
+            const vType = v.type;
+
+            let isCompatible = false;
+            if (cat.includes('Autobusowa') || cat.includes('Regionalna')) {
+                isCompatible = (vType === 'bus' || vType === 'coach');
+            } else if (cat.includes('Trolejbusowa')) {
+                isCompatible = (vType === 'trolley' || vType === 'bus' || vType === 'coach');
+            } else if (cat.includes('Tramwajowa')) {
+                isCompatible = (vType === 'tram');
+            } else if (cat.includes('Metra')) {
+                isCompatible = (vType === 'metro');
+            } else if (cat.includes('Kolejowa')) {
+                isCompatible = (vType === 'rail');
+            }
+
+            if (!isCompatible) {
+                showToast("Wybrany pojazd nie pasuje do tej kategorii linii!", "error");
+                return;
+            }
+
+            const assignedCount = game.vehicles.filter(item => item.lineId === lineId).length;
+            if(assignedCount >= getMaxVehiclesForLine(l)) { showToast("Limit pojazdów dla tej linii osiągnięty!", "error"); return; }
+
+            v.lineId = lineId;
+            saveGameToLocalStorage();
+            updateMapStats();
+            showToast("Przypisano pojazd do linii!");
+
+            setTimeout(() => {
+                renderLines();
+            }, 100);
+        }
+
+        function unassignVehicle(vId) {
+            const v = game.vehicles.find(item => item.instanceId === vId);
+            if(v) { v.lineId = null; renderLines(); updateMapStats(); showToast("Odczepiono pojazd od linii."); }
+        }
+
+        function renderDepotsManagement() {
+            const list = document.getElementById("depots-management-list");
+            const editList = document.getElementById("fleet-numbers-edit-container");
+            if(!list) return;
+
+            list.innerHTML = game.depots.length === 0 ? "Brak zajezdni." : game.depots.map(d => {
+                const isBusTrolley = d.type.includes('Autobusowo');
+                const isTram = d.type.includes('Tramwajowa');
+                const isStp = d.type.includes('STP') || d.type.includes('Stacja Techniczna');
+
+                const workshopLvl = d.workshopLevel || 0;
+                const maxRepairs = workshopLvl === 0 ? 1 : workshopLvl + 1;
+                const workshopCost = workshopLvl === 0 ? 80000 : 120000 * workshopLvl;
+
+                return `
+                    <div class="border rounded-xl p-3.5 app-card space-y-3">
+                        <div class="flex justify-between items-center font-bold">
+                            <span><i class="fa-solid fa-warehouse text-amber-600"></i> ${d.name} (${d.type})</span>
+                            <button type="button" onclick="deleteDepot(${d.id})" class="text-rose-500 font-bold text-xs"><i class="fa-solid fa-trash"></i> Usuń zajezdnię</button>
+                        </div>
+                        <div class="space-y-2 text-[11px]">
+                            <div class="flex justify-between items-center border-b pb-1">
+                                <span>Hala OC / Warsztat (Poziom ${workshopLvl}/6, Max napraw jednocześnie: ${maxRepairs})</span>
+                                ${workshopLvl < 6 ? `<button type="button" onclick="upgradeDepotWorkshop(${d.id}, ${workshopCost})" class="px-2.5 py-1 bg-amber-600 text-white rounded font-bold">Ulepsz (${workshopCost.toLocaleString()} PLN)</button>` : '<span class="text-emerald-600 font-bold">MAX</span>'}
+                            </div>
+                            <div class="flex justify-between items-center border-b pb-1">
+                                <span>Myjnia pojazdów</span>
+                                <button type="button" onclick="buyDepotWash(${d.id}, 50000)" class="px-2.5 py-1 ${d.hasWash ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-800'} rounded font-bold">${d.hasWash ? 'Posiada (Aktywna)' : 'Kup (50,000 PLN)'}</button>
+                            </div>
+                            ${isBusTrolley ? `
+                            <div class="flex justify-between items-center border-b pb-1">
+                                <span>Stacja Paliw / Wodoru (Poz. ${d.fuelLevel || 1}/5)</span>
+                                <button type="button" onclick="upgradeDepot(${d.id}, 'fuelLevel', 50000)" class="px-2.5 py-1 bg-amber-600 text-white rounded font-bold">Ulepsz (50k)</button>
+                            </div>` : ''}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            if(editList) {
+                editList.innerHTML = game.vehicles.length === 0 ? "Brak pojazdów." : game.vehicles.map(v => `
+                    <div class="p-3 border rounded-xl space-y-2 app-card">
+                        <div class="flex justify-between items-center font-bold">
+                            <span>${v.fleetNumber} ${v.name}</span>
+                            <span class="text-[10px]">Stan: ${Math.round(v.condition)}%</span>
+                        </div>
+                        <div class="flex gap-2 items-center">
+                            <select id="assign-depot-${v.instanceId}" class="w-full text-xs p-1.5 border rounded outline-none">
+                                <option value="">-- Wybierz zajezdnię --</option>
+                                ${game.depots.map(d => {
+                                    const vType = v.type;
+                                    const dType = d.type;
+                                    let comp = false;
+                                    if (dType.includes('Autobusowo') && (vType === 'bus' || vType === 'coach' || vType === 'trolley')) comp = true;
+                                    if (dType.includes('Tramwajowa') && vType === 'tram') comp = true;
+                                    if ((dType.includes('STP') || dType.includes('Stacja Techniczna')) && (vType === 'metro' || vType === 'rail')) comp = true;
+                                    if (vType.startsWith('tech_')) comp = true;
+
+                                    return `<option value="${d.id}" ${v.depotId == d.id ? 'selected' : ''} ${!comp ? 'disabled' : ''}>${d.name} ${!comp ? '(Niezgodny typ)' : ''}</option>`;
+                                }).join('')}
+                            </select>
+                            <button type="button" onclick="assignVehicleToDepot(${v.instanceId})" class="px-3 py-1.5 bg-amber-600 text-white rounded font-bold text-xs">Przypisz</button>
+                        </div>
+                    </div>`).join('');
+            }
+        }
+
+        function deleteDepot(depotId) {
+            if(!confirm("Czy na pewno chcesz usunąć tę zajezdnię?")) return;
+            game.depots = game.depots.filter(d => d.id !== depotId);
+            game.vehicles.forEach(v => { if(v.depotId === depotId) v.depotId = null; });
+            renderDepotsManagement();
+            updateMapObjects();
+            updateMapStats();
+            showToast("Zajezdnia została usunięta.");
+        }
+
+        function upgradeDepot(depotId, prop, cost) {
+            const d = game.depots.find(item => item.id === depotId);
+            if(!d) return;
+            if((d[prop] || 1) >= 5) { showToast("Osiągnięto maksymalny poziom!", "error"); return; }
+            if(game.money < cost) { showToast("Brak środków!", "error"); return; }
+            game.money -= cost;
+            d[prop] = (d[prop] || 1) + 1;
+            updateBalance(); updateMapStats(); renderDepotsManagement(); showToast("Rozbudowano pomyślnie!");
+        }
+
+        function upgradeDepotWorkshop(depotId, cost) {
+            const d = game.depots.find(item => item.id === depotId);
+            if(!d) return;
+            const currentLvl = d.workshopLevel || 0;
+            if(currentLvl >= 6) { showToast("Osiągnięto maksymalny poziom warsztatu (6)!", "error"); return; }
+            if(game.money < cost) { showToast("Brak środków!", "error"); return; }
+            game.money -= cost;
+            d.workshopLevel = currentLvl + 1;
+            updateBalance(); updateMapStats(); renderDepotsManagement(); showToast(`Ulepszono halę OC / warsztat do poziomu ${d.workshopLevel}!`);
+        }
+
+        function buyDepotWash(depotId, cost) {
+            const d = game.depots.find(item => item.id === depotId);
+            if(!d) return;
+            if(d.hasWash) { showToast("Ta zajezdnia posiada już myjnię!", "error"); return; }
+            if(game.money < cost) { showToast("Brak środków!", "error"); return; }
+            game.money -= cost;
+            d.hasWash = true;
+            updateBalance(); updateMapStats(); renderDepotsManagement(); showToast("Kupiono myjnię dla zajezdni!");
+        }
+
+        function assignVehicleToDepot(vId) {
+            const sel = document.getElementById(`assign-depot-${vId}`);
+            if(!sel) return;
+            const depotId = parseInt(sel.value);
+            const v = game.vehicles.find(item => item.instanceId === vId);
+            const d = game.depots.find(item => item.id === depotId);
+
+            if(!v || !d) {
+                if(v) v.depotId = null;
+                showToast("Odpięto z zajezdni.");
+                renderDepotsManagement();
+                return;
+            }
+
+            const vType = v.type;
+            const dType = d.type;
+            let comp = false;
+            if (dType.includes('Autobusowo') && (vType === 'bus' || vType === 'coach' || vType === 'trolley')) comp = true;
+            if (dType.includes('Tramwajowa') && vType === 'tram') comp = true;
+            if ((dType.includes('STP') || dType.includes('Stacja Techniczna')) && (vType === 'metro' || vType === 'rail')) comp = true;
+            if (vType.startsWith('tech_')) comp = true;
+
+            if (!comp) {
+                showToast("Ten typ pojazdu nie może być przypisany do tej zajezdni!", "error");
+                return;
+            }
+
+            v.depotId = depotId;
+            showToast("Przypisano do zajezdni pomyślnie!");
+            renderDepotsManagement();
+        }
+
+        function buyVehicleFromCatalog(name) {
+            const v = fullVehicleCatalog.find(item => item.name === name);
+            if(!v || game.money < v.price) { showToast("Brak środków!", "error"); return; }
+            game.money -= v.price;
+
+            let assignedFleetNumber = "";
+            const baseNum = Math.floor(1000 + Math.random() * 9000);
+            if (v.isDualNumber) {
+                assignedFleetNumber = `#${baseNum} / #${baseNum + 1}`;
+            } else {
+                assignedFleetNumber = `#${baseNum}`;
+            }
+
+            game.vehicles.push({
+                instanceId: Date.now(),
+                fleetNumber: assignedFleetNumber,
+                name: v.name,
+                cat: v.cat,
+                price: v.price,
+                cap: v.cap,
+                type: v.type,
+                prop: v.prop || 'diesel',
+                fuel: 100,
+                lineId: null,
+                depotId: null,
+                condition: 100,
+                dirtiness: Math.floor(Math.random() * 20),
+                delay: 0,
+                repairFinishTime: 0,
+                faults: [],
+                isComposed: false
+            });
+            updateBalance(); updateMapStats(); renderDepot(); updateComposeSelects(); showToast(`Kupiono ${v.name}!`);
+        }
+
+        function renderDepot() {
+            const container = document.getElementById('depot-container');
+            if(!container) return;
+            container.innerHTML = game.vehicles.length === 0 ? "Brak pojazdów." : game.vehicles.map(v => `
+                <div class="border p-3 rounded-xl space-y-2 app-card">
+                    <b>${v.fleetNumber} ${v.name}</b><br>
+                    Miejsc: ${v.cap} | Stan: ${Math.round(v.condition)}% | Zabrudzenie: ${Math.round(v.dirtiness || 0)}%<br>
+                    <div class="flex gap-2 pt-1">
+                        <button type="button" onclick="openVehicleFaultModal(${v.instanceId})" class="flex-1 py-1 bg-amber-600 text-white rounded text-[10px] font-bold">Serwis / Napraw</button>
+                        ${v.isComposed ? `<button type="button" onclick="decomposeTrain(${v.instanceId})" class="flex-1 py-1 bg-orange-600 text-white rounded text-[10px] font-bold">Rozłącz</button>` : ''}
+                        <button type="button" onclick="openSellModal(${v.instanceId})" class="flex-1 py-1 bg-rose-600 text-white rounded text-[10px] font-bold">Sprzedaj...</button>
+                    </div>
+                </div>`).join('');
+            document.getElementById('owned-count').innerText = game.vehicles.length;
+        }
+
+        function openSellModal(instanceId) {
+            game.selectedVehicleToSell = game.vehicles.find(v => v.instanceId === instanceId);
+            if(!game.selectedVehicleToSell) return;
+            document.getElementById("sell-modal-content").innerHTML = `<b>Pojazd:</b> ${game.selectedVehicleToSell.name} (${game.selectedVehicleToSell.fleetNumber})<br>Stan techniczny: <b>${Math.round(game.selectedVehicleToSell.condition)}%</b>`;
+            document.getElementById("market-sell-price-input").value = Math.floor(game.selectedVehicleToSell.price * (game.selectedVehicleToSell.condition / 100));
+            document.getElementById("sell-vehicle-modal").classList.remove("hidden");
+        }
+        function closeSellModal() { document.getElementById("sell-vehicle-modal").classList.add("hidden"); }
+
+        function executeInstantSell() {
+            if(!game.selectedVehicleToSell) return;
+            const v = game.selectedVehicleToSell;
+            const condRatio = v.condition / 100;
+            const refund = Math.max(10000, Math.floor(v.price * condRatio * 0.75));
+            game.money += refund;
+            game.vehicles = game.vehicles.filter(item => item.instanceId !== v.instanceId);
+            updateBalance(); updateMapStats(); renderDepot(); renderSpecificFleetView(); closeSellModal();
+            showToast(`Sprzedano pojazd natychmiast za ${refund.toLocaleString()} PLN.`);
+        }
+
+        function executeMarketSell() {
+            if(!game.selectedVehicleToSell) return;
+            const price = parseInt(document.getElementById("market-sell-price-input").value);
+            if(isNaN(price) || price <= 0) { showToast("Podaj cenę!", "error"); return; }
+            if(!game.marketListings) game.marketListings = [];
+            game.marketListings.unshift({ vehicle: { ...game.selectedVehicleToSell }, price, discountPct: 15, isPlayer: true });
+            game.vehicles = game.vehicles.filter(v => v.instanceId !== game.selectedVehicleToSell.instanceId);
+            renderDepot(); renderSpecificFleetView(); closeSellModal(); showToast("Wystawiono na rynek wtórny!");
+        }
+
+        function renderMarketListings() {
+            const container = document.getElementById("market-listings-container");
+            if(!container) return;
+            container.innerHTML = game.marketListings.length === 0 ? '<div class="opacity-50 italic col-span-3">Brak ofert.</div>' : game.marketListings.map((item, idx) => {
+                const catalogPrice = item.vehicle.price || Math.round(item.price / (1 - item.discountPct / 100));
+                return `
+                    <div class="border p-3 rounded-xl space-y-2 app-card shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center"><span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">${item.vehicle.cat}</span><span class="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">-${item.discountPct}%</span></div>
+                            <b class="font-bold block mt-1">${item.vehicle.name} (${item.vehicle.fleetNumber})</b>
+                            <span class="opacity-75 text-[11px]">Stan: <b class="${item.vehicle.condition < 30 ? 'text-rose-600' : 'text-amber-600'}">${Math.round(item.vehicle.condition)}%</b> | Miejsc: ${item.vehicle.cap}</span><br>
+                            <div class="mt-1 flex items-center gap-2">
+                                <span class="line-through text-slate-400 text-xs">${catalogPrice.toLocaleString()} PLN</span>
+                                <span class="text-emerald-600 font-extrabold text-sm">${item.price.toLocaleString()} PLN</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="buyMarketListing(${idx})" class="w-full mt-2 py-1.5 bg-amber-600 text-white rounded-lg font-bold text-xs">Kup pojazd</button>
+                    </div>`;
+            }).join('');
+        }
+
+        function buyMarketListing(idx) {
+            const item = game.marketListings[idx];
+            if(!item || game.money < item.price) { showToast("Brak środków!", "error"); return; }
+            game.money -= item.price;
+            game.vehicles.push(item.vehicle);
+            
+            game.marketListings.splice(idx, 1);
+            generateSingleBotMarketOffer();
+
+            updateBalance(); updateMapStats(); renderMarketListings(); renderDepot(); showToast("Zakupiono pojazd z rynku wtórnego!");
+        }
+
+        function generateSingleBotMarketOffer() {
+            if(!game.marketListings) game.marketListings = [];
+            const cleanCatalog = fullVehicleCatalog.filter(v => !v.type.startsWith('tech_'));
+            const proto = cleanCatalog[Math.floor(Math.random() * cleanCatalog.length)];
+            if(proto) {
+                const discountPct = Math.floor(10 + Math.random() * 31);
+                const baseNum = Math.floor(1000 + Math.random() * 9000);
+                const fNum = proto.isDualNumber ? `#${baseNum} / #${baseNum + 1}` : `#${baseNum}`;
+                const randomCondition = Math.floor(20 + Math.random() * 61);
+
+                game.marketListings.push({
+                    vehicle: { instanceId: Date.now() + Math.random(), fleetNumber: fNum, name: proto.name, cat: proto.cat, cap: proto.cap, type: proto.type, prop: proto.prop || 'diesel', fuel: 100, condition: randomCondition, dirtiness: Math.floor(Math.random() * 70), price: proto.price, repairFinishTime: 0, faults: [], isComposed: false },
+                    price: Math.floor(proto.price * (randomCondition / 100) * (1 - discountPct / 100)),
+                    discountPct, isPlayer: false
+                });
+            }
+        }
+
+        function checkAndRefreshMarket() {
+            if(!game.marketListings) game.marketListings = [];
+            while(game.marketListings.length < 6) {
+                generateSingleBotMarketOffer();
+            }
+        }
+
+        function renderFinancesTab() {
+            const tbody = document.getElementById("finances-table-body");
+            if(!tbody) return;
+
+            let allUsersBudgets = [];
+            
+            for (let i = 0; i < localStorage.length; i++){
+                const key = localStorage.key(i);
+                if(key && key.startsWith('polska_transport_user_')) {
+                    try {
+                        const userData = JSON.parse(localStorage.getItem(key));
+                        allUsersBudgets.push({
+                            name: userData.companyName || key.replace('polska_transport_user_', ''),
+                            username: key.replace('polska_transport_user_', ''),
+                            profile: userData.profile === 'urban' ? "Transport Miejski" : "Kolej",
+                            vehicles: userData.vehicles ? userData.vehicles.length : 0,
+                            lines: userData.lines ? userData.lines.length : 0,
+                            money: userData.money || 0
+                        });
+                    } catch(e) {}
+                }
+            }
+
+            if(!allUsersBudgets.some(u => u.username === currentUser)) {
+                allUsersBudgets.push({
+                    name: game.companyName + " (Ty)",
+                    username: currentUser,
+                    profile: game.profile === 'urban' ? "Transport Miejski" : "Kolej",
+                    vehicles: game.vehicles.length,
+                    lines: game.lines.length,
+                    money: game.money
+                });
+            }
+
+            tbody.innerHTML = allUsersBudgets.map(u => `
+                <tr class="hover:bg-slate-500/5 transition">
+                    <td class="p-3 font-bold flex items-center gap-2"><i class="fa-solid fa-user-tie text-amber-600"></i> ${u.name} <span class="text-[10px] opacity-60">(${u.username})</span></td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold">${u.profile}</span></td>
+                    <td class="p-3">${u.vehicles}</td>
+                    <td class="p-3">${u.lines}</td>
+                    <td class="p-3 text-right font-extrabold text-emerald-600">${Math.floor(u.money).toLocaleString()} PLN</td>
+                </tr>`).join('');
+        }
+
+        function takeLoan(amt, payback) { game.money += amt; game.loans += payback; updateBalance(); updateMapStats(); showToast("Kredyt wzięty pomyślnie."); }
+        
+        function adminExecuteMoneyTransfer(action) {
+            if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
+            const amt = parseInt(document.getElementById("admin-amount").value);
+            if(action === 'add') game.money += amt; else game.money = Math.max(0, game.money - amt);
+            updateBalance(); updateMapStats();
+            showToast("Zaktualizowano saldo.");
+        }
+
+        function adminCloseUserCompany() {
+            if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
+            const targetUser = document.getElementById("admin-close-username").value.trim();
+            if(!targetUser) { showToast("Wpisz nick gracza!", "error"); return; }
+            if(targetUser.toLowerCase() === 'qubax') { showToast("Nie możesz zamknąć własnej głównej firmy!", "error"); return; }
+
+            if(localStorage.getItem(`polska_transport_user_${targetUser}`)) {
+                localStorage.removeItem(`polska_transport_user_${targetUser}`);
+                showToast(`Zamknięto i usunięto firmę gracza: ${targetUser}`);
+                document.getElementById("admin-close-username").value = "";
+                renderFinancesTab();
+            } else {
+                showToast("Nie znaleziono gracza o takim nicku.", "error");
+            }
+        }
+
+        function buyCoachLicense() { game.money -= 1300000; updateBalance(); updateMapStats(); showToast("Licencja kupiona."); }
+        function applyForSubsidy() { setTimeout(() => { game.money += 100000; updateBalance(); updateMapStats(); showToast("Dotacja przyznana!"); }, 3000); showToast("Wniosek wysłany."); }
+
+        function updateMailBadge() {
+            const badge = document.getElementById("mail-badge");
+            if(!badge) return;
+            const unreadCount = game.mail ? game.mail.length : 0;
+            if(unreadCount > 0) {
+                badge.innerText = unreadCount;
+                badge.classList.remove("hidden");
+            } else {
+                badge.classList.add("hidden");
+            }
+            const tbody = document.getElementById("mail-table-body");
+            if(tbody) {
+                tbody.innerHTML = unreadCount === 0 ? '<tr><td colspan="3" class="py-8 text-center italic opacity-50">Brak wiadomości.</td></tr>' : game.mail.map(m => `
+                    <tr class="hover:bg-slate-500/5 transition">
+                        <td class="p-2.5 font-bold">${m.sender}</td>
+                        <td class="p-2.5"><b>${m.subject}</b><br><span class="opacity-75 text-[11px]">${m.text}</span></td>
+                        <td class="p-2.5 opacity-60">${m.date}</td>
+                    </tr>`).join('');
+            }
+        }
+
+        function clearMail() {
+            game.mail = [];
+            updateMailBadge();
+            showToast("Wyczyszczono skrzynkę pocztową.");
+        }
+
+        let engineInterval = null;
+        let lastGameMinutesForDirt = 0;
+
+        function startEngine() {
+            if(engineInterval) clearInterval(engineInterval);
+
+            if(!game.lastProcessedRealHour) {
+                const now = new Date();
+                game.lastProcessedRealHour = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
+            }
+
+            lastGameMinutesForDirt = game.gameMinutes;
+
+            engineInterval = setInterval(() => {
+                game.gameMinutes += 1;
+                if(game.gameMinutes >= 1440) game.gameMinutes = 0;
+                
+                const h = Math.floor(game.gameMinutes / 60), m = game.gameMinutes % 60;
+                const clockEl = document.getElementById("game-clock");
+                if(clockEl) clockEl.innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+
+                const trafficBadge = document.getElementById("traffic-status");
+                if(trafficBadge) {
+                    if(isRushHour(game.gameMinutes)) {
+                        trafficBadge.innerText = "Ruch wzmożony (Szczyt)";
+                        trafficBadge.className = "text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full";
+                    } else {
+                        trafficBadge.innerText = "Ruch płynny";
+                        trafficBadge.className = "text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full";
+                    }
+                }
+
+                updateVehicleDelays();
+                renderLines();
+
+                if ((game.gameMinutes - lastGameMinutesForDirt) >= 720) {
+                    lastGameMinutesForDirt = game.gameMinutes;
+                    game.vehicles.forEach(v => {
+                        if (v.lineId && (!v.repairFinishTime || v.repairFinishTime <= Date.now())) {
+                            v.dirtiness = Math.min(100, (v.dirtiness || 0) + Math.floor(5 + Math.random() * 15));
+                        }
+                    });
+                }
+
+                const nowDate = new Date();
+                const currentRealHourKey = `${nowDate.getFullYear()}-${nowDate.getMonth()}-${nowDate.getDate()}-${nowDate.getHours()}`;
+                
+                if (nowDate.getMinutes() === 0 && nowDate.getSeconds() === 0 && currentRealHourKey !== game.lastProcessedRealHour) {
+                    game.lastProcessedRealHour = currentRealHourKey;
+                    let realHourInc = 0;
+                    let realHourExp = 0;
+
+                    game.lines.forEach(l => {
+                        if (!isLineActiveAtTime(l, game.gameMinutes)) return;
+                        
+                        const assigned = game.vehicles.filter(v => v.lineId === l.id && (!v.repairFinishTime || v.repairFinishTime <= Date.now()));
+                        if(assigned.length > 0) {
+                            let lineInc = 0;
+                            assigned.forEach(v => {
+                                let baseInc = (v.cap * l.stops.length * 5);
+                                l.stops.forEach(s => {
+                                    if(s.upgrades) {
+                                        if(s.upgrades.bay) baseInc *= 1.15;
+                                        if(s.upgrades.sip) baseInc *= 1.10;
+                                        if(s.upgrades.shelter) baseInc *= 1.12;
+                                    }
+                                });
+                                lineInc += baseInc;
+                            });
+
+                            l.hourlyMultiplier = (l.hourlyMultiplier || 1.0) * 1.05;
+                            const finalHourlyInc = Math.round(lineInc * l.hourlyMultiplier);
+                            l.totalRevenue = (l.totalRevenue || 0) + finalHourlyInc;
+                            realHourInc += finalHourlyInc;
+                            game.money += finalHourlyInc;
+
+                            l.hourlyExpenseMultiplier = (l.hourlyExpenseMultiplier || 1.0) * 1.02;
+                            const baseExp = lineInc * 0.8;
+                            const finalHourlyExp = Math.round(baseExp * l.hourlyExpenseMultiplier);
+                            l.totalExpenses = (l.totalExpenses || 0) + finalHourlyExp;
+                            realHourExp += finalHourlyExp;
+                            game.money -= finalHourlyExp;
+                        }
+                    });
+
+                    if (realHourInc > 0 || realHourExp > 0) {
+                        game.lastTicketIncome = realHourInc;
+                        updateBalance();
+                        updateMapStats();
+                        showToast(`Przychody z biletów: +${realHourInc.toLocaleString()} PLN, Koszty linii: -${realHourExp.toLocaleString()} PLN.`);
+                    }
+                }
+
+                const nowSec = Date.now();
+                game.vehicles.forEach(v => {
+                    const inRep = v.repairFinishTime && v.repairFinishTime > nowSec;
+                    if(v.lineId && !inRep && isLineActiveAtTime(game.lines.find(l => l.id === v.lineId), game.gameMinutes) && v.fuel > 0) {
+                        v.fuel = Math.max(0, v.fuel - 0.1);
+                    }
+                    if(v.lineId && !inRep && v.condition > 15) {
+                        v.condition = Math.max(10, v.condition - 0.005);
+                    }
+                });
+
+                const totalVehiclesCount = game.vehicles ? game.vehicles.length : 0;
+                
+                if (totalVehiclesCount >= 13) {
+                    const hasTechVehicle = game.vehicles.some(v => 
+                        v.type === 'tech_tech' || 
+                        v.type === 'tech_rail' || 
+                        v.name.toLowerCase().includes('kia ceed')
+                    );
+
+                    if (!hasTechVehicle) {
+                        game.unimogWarningTimer = (game.unimogWarningTimer || 0) + 1;
+                        
+                        if (game.unimogWarningTimer >= 1800) {
+                            game.unimogWarningTimer = 0;
+                            if (!game.mail) game.mail = [];
+                            game.mail.unshift({
+                                sender: "Wojewódzki Inspektorat Transportu",
+                                subject: "PILNE: Brak pojazdu technicznego / Nadzoru Ruchu!",
+                                date: `Dziś, ${String(Math.floor(game.gameMinutes/60)).padStart(2,'0')}:${String(game.gameMinutes%60).padStart(2,'0')}`,
+                                text: `Inspekcja przypomina: Twoja flota liczy już ${totalVehiclesCount} pojazdów, ale nie posiadasz żadnego pojazdu pogotowia technicznego ani Kii Ceed (NR). Do zakupu odpowiedniego pojazdu zgłoszenia awaryjne pozostają zablokowane!`
+                            });
+                            updateMailBadge();
+                            showToast("Nowa wiadomość od Inspekcji Transportu!", "error");
+                        }
+                    } else {
+                        game.unimogWarningTimer = 0;
+                    }
+                } else {
+                    game.unimogWarningTimer = 0;
+                }
+
+                checkAndRefreshMarket();
+                saveGameToLocalStorage();
+            }, 1000);
+        }
+
+        function updateFinanceScreen() {
+            document.getElementById("fin-tickets-income").innerText = (game.lastTicketIncome || 0).toLocaleString() + " PLN / ostatnia godzina realna";
+        }
+
+        function updateBalance() {
+            document.getElementById("company-balance").innerText = Math.floor(game.money).toLocaleString() + " PLN";
+            const finBal = document.getElementById("fin-balance");
+            const finLoans = document.getElementById("fin-loans");
+            if(finBal) finBal.innerText = Math.floor(game.money).toLocaleString() + " PLN";
+            if(finLoans) finLoans.innerText = game.loans.toLocaleString() + " PLN";
+            saveGameToLocalStorage();
+        }
+
+        function downloadSaveFile() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(game));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", "polska_transport_save.json");
+            document.body.appendChild(dl); dl.click(); dl.remove();
+        }
+
+        function resetGame() { 
+            if(confirm("Czy na pewno chcesz zresetować postęp tego konta?")) { 
+                if(currentUser) localStorage.removeItem(`polska_transport_user_${currentUser}`);
+                localStorage.removeItem('polska_transport_active_user');
+                location.reload(); 
+            } 
+        }
+    </script>
+</body>
+</html>
