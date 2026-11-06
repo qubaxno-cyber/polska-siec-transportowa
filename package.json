@@ -1,0 +1,12 @@
+{
+  "name": "polska-siec-transportowa",
+  "version": "1.0.0",
+  "description": "Tycoon Transportowy",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
