@@ -819,7 +819,6 @@
             document.getElementById("header-city-name").innerText = "Baza: " + (game.baseCity ? game.baseCity.name : "Warszawa");
             document.getElementById("header-user-badge").innerText = `Gracz: ${currentUser}`;
 
-            // Sprawdzenie uprawnień panelu administratora (Tylko dla Qubax)
             if(currentUser && currentUser.toLowerCase() === 'qubax') {
                 document.getElementById("admin-panel-container").classList.remove("hidden");
             } else {
@@ -1182,9 +1181,9 @@
             document.getElementById("section-" + tab).classList.remove("hidden");
             event.currentTarget.classList.add("border-amber-600", "text-amber-600");
 
-if(tab === 'map' && map) {
-        setTimeout(() => { map.invalidateSize(true); updateMapObjects(); updateMapStats(); }, 200);
-    }
+            if(tab === 'map' && map) {
+                setTimeout(() => { map.invalidateSize(); updateMapObjects(); updateMapStats(); }, 150);
+            }
             if(tab === 'lines') { renderLines(); }
             if(tab === 'depot') { renderDepot(); updateComposeSelects(); }
             if(tab === 'depots') { switchFleetSubTab(game.currentFleetSubTab || 'depots'); }
@@ -2239,7 +2238,7 @@ if(tab === 'map' && map) {
             const cleanCatalog = fullVehicleCatalog.filter(v => !v.type.startsWith('tech_'));
             const proto = cleanCatalog[Math.floor(Math.random() * cleanCatalog.length)];
             if(proto) {
-const discountPct = Math.floor(Math.random() * 36) + 10;
+                const discountPct = Math.floor(10 + Math.random() * 31);
                 const baseNum = Math.floor(1000 + Math.random() * 9000);
                 const fNum = proto.isDualNumber ? `#${baseNum} / #${baseNum + 1}` : `#${baseNum}`;
                 const randomCondition = Math.floor(20 + Math.random() * 61);
@@ -2259,56 +2258,28 @@ const discountPct = Math.floor(Math.random() * 36) + 10;
             }
         }
 
-function renderFinancesTab() {
-    const tbody = document.getElementById("finances-table-body");
-    const adminSelect = document.getElementById("admin-target");
-    if(!tbody) return;
-    
-    tbody.innerHTML = "";
-    if(adminSelect) adminSelect.innerHTML = `<option value="self">Moja Firma (${game.companyName})</option>`;
+        function renderFinancesTab() {
+            const tbody = document.getElementById("finances-table-body");
+            if(!tbody) return;
 
-    // Pobieranie wszystkich firm zapisanych w przeglądarce / sieci lokalnej
-    let allUsersData = [];
-    
-    // Zapisz najpierw aktualnego gracza do wspólnej tablicy sieciowej
-    let globalNetwork = JSON.parse(localStorage.getItem('polska_transport_global_network') || '[]');
-    const existingIndex = globalNetwork.findIndex(u => u.username === game.username);
-    if(existingIndex >= 0) {
-        globalNetwork[existingIndex] = game;
-    } else {
-        globalNetwork.push(game);
-    }
-    localStorage.setItem('polska_transport_global_network', JSON.stringify(globalNetwork));
-
-    // Odczytaj wszystkich graczy z sieci
-    allUsersData = globalNetwork;
-
-    allUsersData.forEach(u => {
-        const totalVehicles = u.vehicles ? u.vehicles.length : 0;
-        const activeLines = u.lines ? u.lines.length : 0;
-        const profileName = u.profile === 'rail' ? 'Kolej / Pociągi' : 'Transport Miejski';
-
-        tbody.innerHTML += `
-            <tr class="hover:bg-amber-500/5 transition">
-                <td class="p-3 font-bold flex items-center gap-1.5">
-                    <i class="fa-solid fa-user-tie text-amber-600"></i>
-                    <div>
-                        <div>${u.companyName}</div>
-                        <div class="text-[10px] opacity-75 font-normal">Gracz: ${u.username || 'Nieznany'} | Baza: ${u.baseCity ? u.baseCity.name : 'Warszawa'}</div>
-                    </div>
-                </td>
-                <td class="p-3"><span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-extrabold">${profileName}</span></td>
-                <td class="p-3 font-bold">${totalVehicles}</td>
-                <td class="p-3 font-bold">${activeLines}</td>
-                <td class="p-3 text-right font-extrabold text-emerald-600">${(u.money || 0).toLocaleString()} PLN</td>
-            </tr>
-        `;
-
-        if(adminSelect && u.username !== game.username) {
-            adminSelect.innerHTML += `<option value="${u.username}">${u.companyName} (${u.username})</option>`;
-        }
-    });
-}
+            let allUsersBudgets = [];
+            
+            for (let i = 0; i < localStorage.length; i++){
+                const key = localStorage.key(i);
+                if(key && key.startsWith('polska_transport_user_')) {
+                    try {
+                        const userData = JSON.parse(localStorage.getItem(key));
+                        allUsersBudgets.push({
+                            name: userData.companyName || key.replace('polska_transport_user_', ''),
+                            username: key.replace('polska_transport_user_', ''),
+                            profile: userData.profile === 'urban' ? "Transport Miejski" : "Kolej",
+                            vehicles: userData.vehicles ? userData.vehicles.length : 0,
+                            lines: userData.lines ? userData.lines.length : 0,
+                            money: userData.money || 0
+                        });
+                    } catch(e) {}
+                }
+            }
 
             if(!allUsersBudgets.some(u => u.username === currentUser)) {
                 allUsersBudgets.push({
@@ -2400,19 +2371,9 @@ function renderFinancesTab() {
 
             lastGameMinutesForDirt = game.gameMinutes;
 
-engineInterval = setInterval(() => {
-    game.gameMinutes += 1;
-    if(game.gameMinutes >= 1440) game.gameMinutes = 0;
-}, 1000);
-
-// Tutaj wklejasz autosave:
-setInterval(() => {
-    saveGameToLocalStorage();
-}, 10000);
-
-window.addEventListener('beforeunload', () => {
-    saveGameToLocalStorage();
-});
+            engineInterval = setInterval(() => {
+                game.gameMinutes += 1;
+                if(game.gameMinutes >= 1440) game.gameMinutes = 0;
                 
                 const h = Math.floor(game.gameMinutes / 60), m = game.gameMinutes % 60;
                 const clockEl = document.getElementById("game-clock");
