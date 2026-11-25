@@ -863,7 +863,7 @@
                     // Zachowaj ewentualną dopłatę środków z zewnątrz (np. sprzedaż na rynku lub przelew admina)
                     const cloudMoney = Number(rows[0].money);
                     game = { ...game, ...cloudState };
-                    if (!isNaN(cloudMoney) && cloudMoney > game.money) {
+                    if (!isNaN(cloudMoney)) {
                         game.money = cloudMoney;
                     }
                     setCloudSyncStatus("ok");
@@ -2830,7 +2830,45 @@
                 localStorage.removeItem('polska_transport_active_user');
                 location.reload(); 
             } 
+
+function flushSaveOnExit() {
+            if (!currentUser) return;
+            game.lastTickTimestamp = Date.now();
+            try {
+                localStorage.setItem(`polska_transport_user_${currentUser}`, JSON.stringify(game));
+            } catch (e) {}
+
+            const payload = {
+                username: currentUser,
+                company_name: game.companyName || currentUser,
+                profile: game.profile || "urban",
+                money: Math.floor(game.money || 0),
+                vehicles_count: game.vehicles ? game.vehicles.length : 0,
+                lines_count: game.lines ? game.lines.length : 0,
+                state_json: game,
+                updated_at: new Date().toISOString()
+            };
+
+            fetch(`${SUPABASE_URL}/rest/v1/companies?on_conflict=username`, {
+                method: "POST",
+                keepalive: true,
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`,
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates"
+                },
+                body: JSON.stringify(payload)
+            }).catch(() => {});
         }
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") {
+                flushSaveOnExit();
+            }
+        });
+
+        window.addEventListener("pagehide", flushSaveOnExit);
     </script>
 </body>
 </html>
