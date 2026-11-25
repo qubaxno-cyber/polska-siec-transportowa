@@ -874,13 +874,6 @@ async function loadUserFromCloud(username) {
     }
     return false;
 }
-            } catch (e) {
-                console.warn("Błąd pobierania z Supabase:", e);
-                setCloudSyncStatus("err");
-            }
-            return false;
-        }
-
         async function syncGameToCloud(force = false) {
             if (!currentUser || isCloudSyncing) return;
             const now = Date.now();
