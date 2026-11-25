@@ -2824,7 +2824,7 @@ async function loadUserFromCloud(username) {
             document.body.appendChild(dl); dl.click(); dl.remove();
         }
 
-        async function resetGame() { 
+async function resetGame() { 
             if(confirm("Czy na pewno chcesz zresetować postęp tego konta (również w chmurze)?")) { 
                 if(currentUser) {
                     localStorage.removeItem(`polska_transport_user_${currentUser}`);
@@ -2834,9 +2834,10 @@ async function loadUserFromCloud(username) {
                 }
                 localStorage.removeItem('polska_transport_active_user');
                 location.reload(); 
-            } 
+            }
+        }
 
-function flushSaveOnExit() {
+        function flushSaveOnExit() {
             if (!currentUser) return;
             game.lastTickTimestamp = Date.now();
             try {
