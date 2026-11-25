@@ -855,20 +855,25 @@
             setTheme(game.theme || "light");
         };
 
-        async function loadUserFromCloud(username) {
-            try {
-                const rows = await sbRequest(`companies?username=eq.${encodeURIComponent(username)}&select=*`);
-                if (rows && rows.length > 0 && rows[0].state_json) {
-                    const cloudState = rows[0].state_json;
-                    // Zachowaj ewentualną dopłatę środków z zewnątrz (np. sprzedaż na rynku lub przelew admina)
-                    const cloudMoney = Number(rows[0].money);
-                    game = { ...game, ...cloudState };
-                    if (!isNaN(cloudMoney)) {
-                        game.money = cloudMoney;
-                    }
-                    setCloudSyncStatus("ok");
-                    return true;
-                }
+async function loadUserFromCloud(username) {
+    try {
+        const rows = await sbRequest(`companies?username=eq.${encodeURIComponent(username)}&select=*`);
+        if (rows && rows.length > 0 && rows[0].state_json) {
+            const cloudState = rows[0].state_json;
+            const cloudMoney = Number(rows[0].money);
+            game = { ...game, ...cloudState };
+            if (!isNaN(cloudMoney)) {
+                game.money = cloudMoney;
+            }
+            setCloudSyncStatus("ok");
+            return true;
+        }
+    } catch (e) {
+        console.warn("Błąd pobierania z Supabase:", e);
+        setCloudSyncStatus("err");
+    }
+    return false;
+}
             } catch (e) {
                 console.warn("Błąd pobierania z Supabase:", e);
                 setCloudSyncStatus("err");
