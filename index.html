@@ -62,12 +62,12 @@
                 <div class="inline-block p-3 bg-amber-100 text-amber-700 rounded-2xl shadow-inner text-3xl">
                     <i class="fa-solid fa-user-lock"></i>
                 </div>
-                <h2 class="text-2xl font-extrabold">System Autoryzacji</h2>
-                <p class="text-xs opacity-75">Wykryto zapisane firmy lub zaloguj się na nowe konto</p>
+                <h2 class="text-2xl font-extrabold">System Autoryzacji Online</h2>
+                <p class="text-xs opacity-75">Połączono z chmurą Multiplayer (Supabase)</p>
             </div>
             
             <div id="saved-accounts-section" class="space-y-2 hidden">
-                <label class="block font-bold text-xs text-amber-600">Wykryte zapisane firmy w przeglądarce:</label>
+                <label class="block font-bold text-xs text-amber-600">Zapisane konta na tym urządzeniu:</label>
                 <div id="saved-accounts-list" class="space-y-1.5 max-h-32 overflow-y-auto"></div>
             </div>
 
@@ -83,7 +83,7 @@
             </div>
 
             <div class="flex flex-col gap-2.5">
-                <button onclick="handleLoginOrRegister()" class="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl shadow-lg transition text-sm">
+                <button id="auth-submit-btn" onclick="handleLoginOrRegister()" class="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white font-bold rounded-xl shadow-lg transition text-sm">
                     Zaloguj się / Zarejestruj
                 </button>
             </div>
@@ -130,7 +130,7 @@
     </div>
 
     <div id="main-app" class="hidden min-h-screen flex flex-col">
-        <header class="backdrop-blur-md shadow-sm border-b sticky top-0 z-45 transition-colors">
+        <header class="backdrop-blur-md shadow-sm border-b sticky top-0 z-40 transition-colors">
             <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
                 <div class="flex items-center space-x-3">
                     <div class="p-2.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-xl shadow-md">
@@ -138,10 +138,11 @@
                     </div>
                     <div>
                         <h1 id="header-company-name" class="font-bold text-base leading-tight">Firma</h1>
-                        <div class="flex items-center gap-1.5 mt-0.5">
+                        <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span id="header-profile-badge" class="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full shadow-sm">Profil</span>
                             <span id="header-city-name" class="text-xs opacity-75 font-medium">Miasto</span>
                             <span id="header-user-badge" class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full">Użytkownik</span>
+                            <span id="cloud-sync-badge" class="text-[10px] bg-sky-100 text-sky-800 font-extrabold px-2 py-0.5 rounded-full"><i class="fa-solid fa-cloud"></i> Online</span>
                         </div>
                     </div>
                 </div>
@@ -151,6 +152,7 @@
                         <button onclick="setTheme('light')" class="px-2 py-1 rounded-xl transition" title="Tryb Klasyczny">☀️</button>
                         <button onclick="setTheme('honey')" class="px-2 py-1 rounded-xl transition" title="Tryb Miodowy">🍯</button>
                         <button onclick="setTheme('dark')" class="px-2 py-1 rounded-xl transition" title="Tryb Ciemny">🌙</button>
+                        <button onclick="logoutUser()" class="px-2 py-1 rounded-xl text-rose-600 hover:bg-rose-500/10 transition" title="Wyloguj"><i class="fa-solid fa-right-from-bracket"></i></button>
                     </div>
 
                     <div class="app-card px-4 py-2 rounded-2xl border shadow-inner flex items-center space-x-3">
@@ -419,7 +421,7 @@
 
                         <div class="mt-6 p-4 border rounded-2xl space-y-3 shadow-inner app-card">
                             <h4 class="font-extrabold text-xs flex items-center gap-2"><i class="fa-solid fa-link text-amber-600"></i> Składy Wielowagonowe / Pociągi Tramwajowe</h4>
-                            <p class="text-[11px] opacity-75">Dozwolone konfiguracje: 2-3x Konstal N, 2-3x Konstal 105Na, 2x Konstal 105N2k, 2-3x Konstal 13N.</p>
+                            <p class="text-[11px] opacity-75">Dozwolone konfiguracje: 2-3x Konstal N, 2-3x Konstal 105Na, 2x Konstal 105N2k, 2x Konstal 105N2k/2000, 2-3x Konstal 13N.</p>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
                                 <select id="compose-select-1" class="p-2.5 border rounded-xl outline-none"><option value="">-- Wagon 1 --</option></select>
                                 <select id="compose-select-2" class="p-2.5 border rounded-xl outline-none"><option value="">-- Wagon 2 --</option></select>
@@ -433,11 +435,12 @@
 
             <div id="section-market" class="tab-content hidden space-y-6">
                 <div class="app-card p-6 rounded-2xl shadow-sm border space-y-6">
-                    <div class="flex justify-between items-center border-b pb-3">
+                    <div class="flex flex-wrap justify-between items-center border-b pb-3 gap-2">
                         <div>
-                            <h3 class="font-extrabold text-base flex items-center gap-2"><i class="fa-solid fa-store text-amber-600"></i> Rynek Wtórny (Stale 6 ofert, odświeżanie co 1.5h)</h3>
-                            <p class="text-xs opacity-70 mt-1">Kupuj używane pojazdy dopasowane do Twojego budżetu lub wystawiaj własne!</p>
+                            <h3 class="font-extrabold text-base flex items-center gap-2"><i class="fa-solid fa-store text-amber-600"></i> Wspólny Rynek Wtórny Online</h3>
+                            <p class="text-xs opacity-70 mt-1">Kupuj używane pojazdy z sieci lub wystawiaj własne dla innych graczy!</p>
                         </div>
+                        <button onclick="syncMarketFromCloud(true)" class="px-3 py-1.5 bg-amber-600 text-white font-bold rounded-xl text-xs"><i class="fa-solid fa-rotate-right"></i> Odśwież oferty</button>
                     </div>
                     <div id="market-listings-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs"></div>
                 </div>
@@ -489,7 +492,7 @@
                             <div class="flex justify-between p-3 border rounded-xl"><span>Przychody z biletów (ostatnia godzina realna):</span><span id="fin-tickets-income" class="font-extrabold text-emerald-600">0 PLN</span></div>
                             <div class="flex justify-between p-3 border rounded-xl"><span>Kredyty:</span><span id="fin-loans" class="font-extrabold text-rose-600">0 PLN</span></div>
                             <div class="flex gap-2 pt-2">
-                                <button onclick="downloadSaveFile()" class="flex-1 py-2.5 bg-amber-600 text-white font-bold rounded-xl text-xs shadow"><i class="fa-solid fa-download"></i> Pobierz zapisu</button>
+                                <button onclick="downloadSaveFile()" class="flex-1 py-2.5 bg-amber-600 text-white font-bold rounded-xl text-xs shadow"><i class="fa-solid fa-download"></i> Pobierz zapis</button>
                                 <button onclick="resetGame()" class="flex-1 py-2.5 bg-rose-600 text-white font-bold rounded-xl text-xs shadow"><i class="fa-solid fa-rotate-right"></i> Reset</button>
                             </div>
                         </div>
@@ -598,6 +601,40 @@
     </div>
 
     <script>
+        const SUPABASE_URL = "https://msfzomotnoplileycvom.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_F_xcSgk2Nq88eU38is4iBA_3oddS8Wd";
+
+        async function sbRequest(path, options = {}) {
+            const headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`,
+                "Content-Type": "application/json",
+                ...(options.headers || {})
+            };
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { ...options, headers });
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`Supabase ${res.status}: ${errText}`);
+            }
+            const text = await res.text();
+            return text ? JSON.parse(text) : null;
+        }
+
+        function setCloudSyncStatus(status) {
+            const badge = document.getElementById("cloud-sync-badge");
+            if (!badge) return;
+            if (status === "ok") {
+                badge.className = "text-[10px] bg-sky-100 text-sky-800 font-extrabold px-2 py-0.5 rounded-full";
+                badge.innerHTML = `<i class="fa-solid fa-cloud"></i> Online`;
+            } else if (status === "syncing") {
+                badge.className = "text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full";
+                badge.innerHTML = `<i class="fa-solid fa-rotate fa-spin"></i> Zapis...`;
+            } else {
+                badge.className = "text-[10px] bg-rose-100 text-rose-800 font-extrabold px-2 py-0.5 rounded-full";
+                badge.innerHTML = `<i class="fa-solid fa-cloud-slash"></i> Offline`;
+            }
+        }
+
         function showToast(message, type = 'success') {
             const container = document.getElementById("toast-container");
             if (!container) return;
@@ -759,8 +796,12 @@
         ];
 
         let currentUser = null;
+        let lastCloudSyncTime = 0;
+        let isCloudSyncing = false;
+
         let game = {
             username: "",
+            passwordHash: "",
             companyName: "Qubax Transport",
             profile: "urban",
             money: 992500,
@@ -789,14 +830,19 @@
 
         let map, selectedMarker = null;
 
-        window.onload = function() {
+        window.onload = async function() {
             const activeUser = localStorage.getItem('polska_transport_active_user');
             if(activeUser) {
+                currentUser = activeUser;
+                const loadedFromCloud = await loadUserFromCloud(activeUser);
+                if (loadedFromCloud) {
+                    launchMainApp();
+                    return;
+                }
                 const saved = localStorage.getItem(`polska_transport_user_${activeUser}`);
                 if(saved) {
                     try {
                         game = JSON.parse(saved);
-                        currentUser = activeUser;
                         launchMainApp();
                         return;
                     } catch(e) {}
@@ -807,8 +853,75 @@
             renderCitySelection();
             renderTicketSettings();
             setTheme(game.theme || "light");
-            startEngine();
         };
+
+        async function loadUserFromCloud(username) {
+            try {
+                const rows = await sbRequest(`companies?username=eq.${encodeURIComponent(username)}&select=*`);
+                if (rows && rows.length > 0 && rows[0].state_json) {
+                    const cloudState = rows[0].state_json;
+                    // Zachowaj ewentualną dopłatę środków z zewnątrz (np. sprzedaż na rynku lub przelew admina)
+                    const cloudMoney = Number(rows[0].money);
+                    game = { ...game, ...cloudState };
+                    if (!isNaN(cloudMoney) && cloudMoney > game.money) {
+                        game.money = cloudMoney;
+                    }
+                    setCloudSyncStatus("ok");
+                    return true;
+                }
+            } catch (e) {
+                console.warn("Błąd pobierania z Supabase:", e);
+                setCloudSyncStatus("err");
+            }
+            return false;
+        }
+
+        async function syncGameToCloud(force = false) {
+            if (!currentUser || isCloudSyncing) return;
+            const now = Date.now();
+            if (!force && now - lastCloudSyncTime < 4000) return;
+
+            isCloudSyncing = true;
+            lastCloudSyncTime = now;
+            setCloudSyncStatus("syncing");
+
+            try {
+                // Sprawdź czy w bazie nie wpadły środki ze sprzedaży na rynku lub od admina
+                const existing = await sbRequest(`companies?username=eq.${encodeURIComponent(currentUser)}&select=money`);
+                if (existing && existing.length > 0 && existing[0].state_json === undefined) {
+                    const dbMoney = Number(existing[0].money);
+                    if (!isNaN(dbMoney) && dbMoney > game.money && (dbMoney - game.money) >= 5000) {
+                        const diff = dbMoney - game.money;
+                        game.money = dbMoney;
+                        updateBalance(false);
+                        showToast(`Otrzymano środki w sieci: +${Math.floor(diff).toLocaleString()} PLN!`);
+                    }
+                }
+
+                const payload = {
+                    username: currentUser,
+                    company_name: game.companyName || currentUser,
+                    profile: game.profile || "urban",
+                    money: Math.floor(game.money || 0),
+                    vehicles_count: game.vehicles ? game.vehicles.length : 0,
+                    lines_count: game.lines ? game.lines.length : 0,
+                    state_json: game,
+                    updated_at: new Date().toISOString()
+                };
+
+                await sbRequest("companies?on_conflict=username", {
+                    method: "POST",
+                    headers: { "Prefer": "resolution=merge-duplicates" },
+                    body: JSON.stringify(payload)
+                });
+                setCloudSyncStatus("ok");
+            } catch (e) {
+                console.warn("Błąd zapisu do Supabase:", e);
+                setCloudSyncStatus("err");
+            } finally {
+                isCloudSyncing = false;
+            }
+        }
 
         function launchMainApp() {
             document.getElementById("auth-screen").classList.add("hidden");
@@ -821,20 +934,28 @@
 
             if(currentUser && currentUser.toLowerCase() === 'qubax') {
                 document.getElementById("admin-panel-container").classList.remove("hidden");
+                populateAdminTargets();
             } else {
                 document.getElementById("admin-panel-container").classList.add("hidden");
             }
 
             setTheme(game.theme || "light");
+            renderTicketSettings();
             initMap();
             renderStopsUpgrades();
             renderCatalog(fullVehicleCatalog);
-            updateBalance();
+            updateBalance(false);
             updateMapStats();
             updateMailBadge();
             startEngine();
             localStorage.setItem('polska_transport_active_user', currentUser);
-            saveGameToLocalStorage();
+            saveGameToLocalStorage(true);
+        }
+
+        function logoutUser() {
+            saveGameToLocalStorage(true);
+            localStorage.removeItem('polska_transport_active_user');
+            location.reload();
         }
 
         function closeOfflineModal() {
@@ -857,7 +978,7 @@
                     const btn = document.createElement("button");
                     btn.type = "button";
                     btn.className = "w-full text-left px-3 py-2 border rounded-xl hover:bg-amber-500/10 font-bold text-xs flex justify-between items-center transition app-card";
-                    btn.innerHTML = `<span><i class="fa-solid fa-user-check text-amber-600"></i> ${uName}</span> <span class="text-amber-600 text-[10px]">Wybierz zapis</span>`;
+                    btn.innerHTML = `<span><i class="fa-solid fa-user-check text-amber-600"></i> ${uName}</span> <span class="text-amber-600 text-[10px]">Wybierz konto</span>`;
                     btn.onclick = () => {
                         document.getElementById("auth-username").value = uName;
                         document.getElementById("auth-password").value = "********";
@@ -872,27 +993,46 @@
             }
         }
 
-        function handleLoginOrRegister() {
+        async function handleLoginOrRegister() {
             const uInput = document.getElementById("auth-username").value.trim();
             const pInput = document.getElementById("auth-password").value.trim();
             if(!uInput || !pInput) { showToast("Wpisz nick i hasło!", "error"); return; }
 
-            currentUser = uInput;
-            const savedData = localStorage.getItem(`polska_transport_user_${currentUser}`);
+            const btn = document.getElementById("auth-submit-btn");
+            if (btn) { btn.disabled = true; btn.innerText = "Łączenie z serwerem..."; }
 
+            currentUser = uInput;
+            const loadedCloud = await loadUserFromCloud(currentUser);
+
+            if (loadedCloud) {
+                if (game.passwordHash && pInput !== "********" && game.passwordHash !== btoa(pInput)) {
+                    showToast("Nieprawidłowe hasło dla tego konta!", "error");
+                    if (btn) { btn.disabled = false; btn.innerText = "Zaloguj się / Zarejestruj"; }
+                    return;
+                }
+                showToast(`Wczytano firmę z chmury: ${currentUser}!`);
+                launchMainApp();
+                return;
+            }
+
+            const savedData = localStorage.getItem(`polska_transport_user_${currentUser}`);
             if(savedData) {
                 try {
                     game = JSON.parse(savedData);
-                    showToast(`Wczytano autozapis gracza: ${currentUser}!`);
+                    showToast(`Wczytano lokalny zapis gracza: ${currentUser}!`);
                     launchMainApp();
                 } catch(e) {
                     showToast("Błąd wczytywania autozapisu.", "error");
                 }
             } else {
                 game.username = currentUser;
+                game.passwordHash = btoa(pInput);
                 document.getElementById("auth-screen").classList.add("hidden");
                 document.getElementById("setup-screen").classList.remove("hidden");
+                renderCitySelection();
             }
+
+            if (btn) { btn.disabled = false; btn.innerText = "Zaloguj się / Zarejestruj"; }
         }
 
         function startTycoonGame() {
@@ -939,8 +1079,8 @@
                 game.vehicles.push({
                     instanceId: Date.now(),
                     fleetNumber: `#${Math.floor(1000 + Math.random() * 9000)}`,
-                    name: "Skład EN57 Klasyk",
-                    cat: "Pociągi i Wagony",
+                    name: "EN57 Klasyk ('Kibelek')",
+                    cat: "Elektryczne Zespoły Trakcyjne (EZT)",
                     price: 1500000,
                     cap: 300,
                     type: "rail",
@@ -958,17 +1098,18 @@
             }
 
             document.getElementById("setup-screen").classList.add("hidden");
-            saveGameToLocalStorage();
+            saveGameToLocalStorage(true);
             launchMainApp();
-            showToast("Firma została założona pomyślnie!");
+            showToast("Firma została założona i zapisana w sieci!");
         }
 
-        function saveGameToLocalStorage() {
+        function saveGameToLocalStorage(forceCloud = false) {
             if(!currentUser) return;
             game.lastTickTimestamp = Date.now();
             try { 
                 localStorage.setItem(`polska_transport_user_${currentUser}`, JSON.stringify(game)); 
             } catch(e) {}
+            syncGameToCloud(forceCloud);
         }
 
         function setTheme(themeName) {
@@ -1055,6 +1196,7 @@
             if (!container) return;
             container.innerHTML = "";
             listToRender.forEach(v => {
+                const escapedName = v.name.replace(/'/g, "\\'");
                 container.innerHTML += `
                     <div class="p-2.5 border rounded-xl flex justify-between items-center mb-1.5 shadow-sm">
                         <div>
@@ -1062,7 +1204,7 @@
                             <span class="opacity-75">Miejsc: ${v.cap} | Napęd: ${v.prop}</span><br>
                             <span class="text-emerald-600 font-extrabold">${v.price.toLocaleString()} PLN</span>
                         </div>
-                        <button onclick="buyVehicleFromCatalog('${v.name}')" class="px-3 py-1 bg-amber-600 text-white rounded-lg font-bold text-xs">Kup</button>
+                        <button onclick="buyVehicleFromCatalog('${escapedName}')" class="px-3 py-1 bg-amber-600 text-white rounded-lg font-bold text-xs">Kup</button>
                     </div>`;
             });
             updateComposeSelects();
@@ -1088,6 +1230,10 @@
             const id2 = document.getElementById('compose-select-2').value;
             const id3 = document.getElementById('compose-select-3').value;
             if(!id1 || !id2) { showToast("Wybierz przynajmniej dwa tramwaje do składu!", "error"); return; }
+            if (id1 === id2 || (id3 && (id1 === id3 || id2 === id3))) {
+                showToast("Nie możesz połączyć tego samego wagonu ze sobą!", "error");
+                return;
+            }
             
             const v1 = game.vehicles.find(v => v.instanceId == id1);
             const v2 = game.vehicles.find(v => v.instanceId == id2);
@@ -1104,8 +1250,9 @@
                 const model = uniqueTypes[0];
                 if ((model === 'Konstal N' && (count === 2 || count === 3)) ||
                     (model === 'Konstal 105Na' && (count === 2 || count === 3)) ||
-                    (model === 'Konstal 105N2k/2000 (Sterowniczy + Doczepa)' && count === 2) ||
-                    (model === 'Konstal 13N' && (count === 2 || count === 3))) {
+                    (model === 'Konstal 105N2k' && count === 2) ||
+                    (model.startsWith('Konstal 105N2k/2000') && count === 2) ||
+                    (model.startsWith('Konstal 13N') && (count === 2 || count === 3))) {
                     isValid = true;
                 }
             }
@@ -1153,6 +1300,7 @@
             renderSpecificFleetView();
             updateComposeSelects();
             updateMapStats();
+            saveGameToLocalStorage(true);
         }
 
         function decomposeTrain(instanceId) {
@@ -1173,6 +1321,7 @@
             updateComposeSelects();
             updateMapStats();
             closeVehicleFaultModal();
+            saveGameToLocalStorage(true);
         }
 
         function switchTab(tab) {
@@ -1187,9 +1336,9 @@
             if(tab === 'lines') { renderLines(); }
             if(tab === 'depot') { renderDepot(); updateComposeSelects(); }
             if(tab === 'depots') { switchFleetSubTab(game.currentFleetSubTab || 'depots'); }
-            if(tab === 'market') { checkAndRefreshMarket(); renderMarketListings(); }
+            if(tab === 'market') { syncMarketFromCloud(true); }
             if(tab === 'finances') { renderFinancesTab(); }
-            if(tab === 'finance') updateFinanceScreen();
+            if(tab === 'finance') { updateFinanceScreen(); populateAdminTargets(); }
             if(tab === 'map') renderStopsUpgrades();
             if(tab === 'mail') updateMailBadge();
         }
@@ -1365,6 +1514,7 @@
                 showToast("Zmieniono numer taborowy pomyślnie!");
                 renderSpecificFleetView();
                 renderDepot();
+                saveGameToLocalStorage(true);
             }
         }
 
@@ -1593,6 +1743,7 @@
             renderStopsUpgrades();
             updateMapObjects();
             updateMapStats();
+            saveGameToLocalStorage(true);
             showToast("Przystanek usunięty.");
         }
 
@@ -1737,6 +1888,7 @@
             document.getElementById('line-stops-count').innerText = "0";
             renderLines(); 
             updateMapStats();
+            saveGameToLocalStorage(true);
             showToast("Utworzono linię!");
         }
 
@@ -1750,7 +1902,7 @@
         }
 
         function isLineActiveAtTime(l, currentMinutes) {
-            if(!l.startTime || !l.endTime) return true;
+            if(!l || !l.startTime || !l.endTime) return true;
             const [startH, startM] = l.startTime.split(':').map(Number);
             const [endH, endM] = l.endTime.split(':').map(Number);
             const startTotal = startH * 60 + startM;
@@ -1905,7 +2057,7 @@
                                 let delayText = inRep ? "<span class='text-rose-600 font-bold'>W warsztacie (wstrzymany zarobek)</span>" : (delay === 0 ? "Brak opóźnienia" : (delay > 0 ? `${delay} min opóźnienia` : `${Math.abs(delay)} min przyspieszenia`));
                                 return `
                                     <div class="flex justify-between p-2 border rounded-xl items-center text-xs">
-                                        <span><b>${v.fleetNumber}</b> ${v.name} (${delayText})</span> 
+                                        <span><b>${v.fleetNumber}</b> ${v.name} (<span class="${delayColor}">${delayText}</span>)</span> 
                                         <button type="button" onclick="unassignVehicle(${v.instanceId})" class="text-rose-500 font-bold">Odczep</button>
                                     </div>`;
                             }).join('')}
@@ -1926,6 +2078,7 @@
             game.lines = game.lines.filter(l => l.id !== id);
             renderLines();
             updateMapStats();
+            saveGameToLocalStorage(true);
         }
 
         function assignVehicleToLine(lineId) {
@@ -1966,7 +2119,7 @@
             if(assignedCount >= getMaxVehiclesForLine(l)) { showToast("Limit pojazdów dla tej linii osiągnięty!", "error"); return; }
 
             v.lineId = lineId;
-            saveGameToLocalStorage();
+            saveGameToLocalStorage(true);
             updateMapStats();
             showToast("Przypisano pojazd do linii!");
 
@@ -1977,7 +2130,7 @@
 
         function unassignVehicle(vId) {
             const v = game.vehicles.find(item => item.instanceId === vId);
-            if(v) { v.lineId = null; renderLines(); updateMapStats(); showToast("Odczepiono pojazd od linii."); }
+            if(v) { v.lineId = null; renderLines(); updateMapStats(); saveGameToLocalStorage(true); showToast("Odczepiono pojazd od linii."); }
         }
 
         function renderDepotsManagement() {
@@ -1987,9 +2140,6 @@
 
             list.innerHTML = game.depots.length === 0 ? "Brak zajezdni." : game.depots.map(d => {
                 const isBusTrolley = d.type.includes('Autobusowo');
-                const isTram = d.type.includes('Tramwajowa');
-                const isStp = d.type.includes('STP') || d.type.includes('Stacja Techniczna');
-
                 const workshopLvl = d.workshopLevel || 0;
                 const maxRepairs = workshopLvl === 0 ? 1 : workshopLvl + 1;
                 const workshopCost = workshopLvl === 0 ? 80000 : 120000 * workshopLvl;
@@ -2053,6 +2203,7 @@
             renderDepotsManagement();
             updateMapObjects();
             updateMapStats();
+            saveGameToLocalStorage(true);
             showToast("Zajezdnia została usunięta.");
         }
 
@@ -2098,6 +2249,7 @@
                 if(v) v.depotId = null;
                 showToast("Odpięto z zajezdni.");
                 renderDepotsManagement();
+                saveGameToLocalStorage(true);
                 return;
             }
 
@@ -2117,6 +2269,7 @@
             v.depotId = depotId;
             showToast("Przypisano do zajezdni pomyślnie!");
             renderDepotsManagement();
+            saveGameToLocalStorage(true);
         }
 
         function buyVehicleFromCatalog(name) {
@@ -2190,25 +2343,84 @@
             showToast(`Sprzedano pojazd natychmiast za ${refund.toLocaleString()} PLN.`);
         }
 
-        function executeMarketSell() {
+        async function executeMarketSell() {
             if(!game.selectedVehicleToSell) return;
             const price = parseInt(document.getElementById("market-sell-price-input").value);
             if(isNaN(price) || price <= 0) { showToast("Podaj cenę!", "error"); return; }
-            if(!game.marketListings) game.marketListings = [];
-            game.marketListings.unshift({ vehicle: { ...game.selectedVehicleToSell }, price, discountPct: 15, isPlayer: true });
-            game.vehicles = game.vehicles.filter(v => v.instanceId !== game.selectedVehicleToSell.instanceId);
-            renderDepot(); renderSpecificFleetView(); closeSellModal(); showToast("Wystawiono na rynek wtórny!");
+
+            const vehicleCopy = { ...game.selectedVehicleToSell, lineId: null, depotId: null };
+            const discountPct = Math.max(5, Math.min(70, Math.round((1 - price / (vehicleCopy.price || price)) * 100)));
+
+            try {
+                await sbRequest("market_listings", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        seller_username: currentUser,
+                        vehicle_json: vehicleCopy,
+                        price: price,
+                        discount_pct: discountPct,
+                        is_player: true
+                    })
+                });
+                game.vehicles = game.vehicles.filter(v => v.instanceId !== game.selectedVehicleToSell.instanceId);
+                updateBalance();
+                renderDepot();
+                renderSpecificFleetView();
+                closeSellModal();
+                syncMarketFromCloud(false);
+                showToast("Wystawiono pojazd na wspólny rynek wtórny!");
+            } catch (e) {
+                showToast("Błąd wystawiania na rynek w chmurze.", "error");
+            }
+        }
+
+        async function syncMarketFromCloud(showNotification = false) {
+            const container = document.getElementById("market-listings-container");
+            try {
+                let rows = await sbRequest("market_listings?select=*&order=created_at.desc");
+                if (!rows) rows = [];
+
+                // Uzupełnij oferty systemowe w chmurze, jeśli jest mniej niż 6
+                if (rows.length < 6) {
+                    const needed = 6 - rows.length;
+                    for (let i = 0; i < needed; i++) {
+                        await generateSingleBotMarketOfferCloud();
+                    }
+                    rows = await sbRequest("market_listings?select=*&order=created_at.desc") || [];
+                }
+
+                game.marketListings = rows.map(r => ({
+                    dbId: r.id,
+                    sellerUsername: r.seller_username || "Giełda Krajowa",
+                    vehicle: r.vehicle_json,
+                    price: Number(r.price),
+                    discountPct: r.discount_pct || 15,
+                    isPlayer: r.is_player
+                }));
+
+                renderMarketListings();
+                if (showNotification) showToast("Odświeżono oferty rynku wtórnego.");
+            } catch (e) {
+                console.warn("Błąd pobierania rynku:", e);
+                renderMarketListings();
+            }
         }
 
         function renderMarketListings() {
             const container = document.getElementById("market-listings-container");
             if(!container) return;
             container.innerHTML = game.marketListings.length === 0 ? '<div class="opacity-50 italic col-span-3">Brak ofert.</div>' : game.marketListings.map((item, idx) => {
-                const catalogPrice = item.vehicle.price || Math.round(item.price / (1 - item.discountPct / 100));
+                const catalogPrice = item.vehicle.price || Math.round(item.price / Math.max(0.1, (1 - item.discountPct / 100)));
+                const isOwn = item.sellerUsername === currentUser;
                 return `
                     <div class="border p-3 rounded-xl space-y-2 app-card shadow-sm flex flex-col justify-between">
                         <div>
-                            <div class="flex justify-between items-center"><span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">${item.vehicle.cat}</span><span class="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">-${item.discountPct}%</span></div>
+                            <div class="flex justify-between items-center gap-1">
+                                <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">${item.vehicle.cat}</span>
+                                <span class="text-[10px] ${item.isPlayer ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'} font-bold px-2 py-0.5 rounded-full">
+                                    ${item.isPlayer ? 'Gracz: ' + item.sellerUsername : '-' + item.discountPct + '%'}
+                                </span>
+                            </div>
                             <b class="font-bold block mt-1">${item.vehicle.name} (${item.vehicle.fleetNumber})</b>
                             <span class="opacity-75 text-[11px]">Stan: <b class="${item.vehicle.condition < 30 ? 'text-rose-600' : 'text-amber-600'}">${Math.round(item.vehicle.condition)}%</b> | Miejsc: ${item.vehicle.cap}</span><br>
                             <div class="mt-1 flex items-center gap-2">
@@ -2216,69 +2428,125 @@
                                 <span class="text-emerald-600 font-extrabold text-sm">${item.price.toLocaleString()} PLN</span>
                             </div>
                         </div>
-                        <button type="button" onclick="buyMarketListing(${idx})" class="w-full mt-2 py-1.5 bg-amber-600 text-white rounded-lg font-bold text-xs">Kup pojazd</button>
+                        <button type="button" onclick="buyMarketListing(${idx})" class="w-full mt-2 py-1.5 ${isOwn ? 'bg-slate-600' : 'bg-amber-600'} text-white rounded-lg font-bold text-xs">
+                            ${isOwn ? 'Wycofaj własną ofertę' : 'Kup pojazd'}
+                        </button>
                     </div>`;
             }).join('');
         }
 
-        function buyMarketListing(idx) {
+        async function buyMarketListing(idx) {
             const item = game.marketListings[idx];
-            if(!item || game.money < item.price) { showToast("Brak środków!", "error"); return; }
-            game.money -= item.price;
-            game.vehicles.push(item.vehicle);
-            
-            game.marketListings.splice(idx, 1);
-            generateSingleBotMarketOffer();
+            if(!item) return;
+            const isOwn = item.sellerUsername === currentUser;
 
-            updateBalance(); updateMapStats(); renderMarketListings(); renderDepot(); showToast("Zakupiono pojazd z rynku wtórnego!");
+            if(!isOwn && game.money < item.price) { showToast("Brak środków!", "error"); return; }
+
+            try {
+                // Usuń ofertę z bazy (zwróci usunięty wiersz tylko jeśli nikt inny jej jeszcze nie kupił)
+                const deleted = await sbRequest(`market_listings?id=eq.${item.dbId}`, {
+                    method: "DELETE",
+                    headers: { "Prefer": "return=representation" }
+                });
+
+                if (!deleted || deleted.length === 0) {
+                    showToast("Ktoś właśnie wykupił ten pojazd przed Tobą!", "error");
+                    syncMarketFromCloud(false);
+                    return;
+                }
+
+                if (!isOwn) {
+                    game.money -= item.price;
+                    // Przelej środki sprzedającemu graczowi w Supabase
+                    if (item.isPlayer && item.sellerUsername) {
+                        const sellerRows = await sbRequest(`companies?username=eq.${encodeURIComponent(item.sellerUsername)}&select=money`);
+                        if (sellerRows && sellerRows.length > 0) {
+                            const newSellerMoney = Number(sellerRows[0].money || 0) + item.price;
+                            await sbRequest(`companies?username=eq.${encodeURIComponent(item.sellerUsername)}`, {
+                                method: "PATCH",
+                                body: JSON.stringify({ money: newSellerMoney })
+                            });
+                        }
+                    }
+                }
+
+                const boughtVehicle = { ...item.vehicle, instanceId: Date.now() + Math.floor(Math.random() * 1000), lineId: null, depotId: null };
+                game.vehicles.push(boughtVehicle);
+
+                if (!item.isPlayer) {
+                    await generateSingleBotMarketOfferCloud();
+                }
+
+                updateBalance();
+                updateMapStats();
+                renderDepot();
+                await syncMarketFromCloud(false);
+                showToast(isOwn ? "Wycofano pojazd z rynku do zajezdni." : "Zakupiono pojazd z rynku wtórnego!");
+            } catch (e) {
+                showToast("Błąd zakupu z rynku w chmurze.", "error");
+            }
         }
 
-        function generateSingleBotMarketOffer() {
-            if(!game.marketListings) game.marketListings = [];
+        async function generateSingleBotMarketOfferCloud() {
             const cleanCatalog = fullVehicleCatalog.filter(v => !v.type.startsWith('tech_'));
             const proto = cleanCatalog[Math.floor(Math.random() * cleanCatalog.length)];
-            if(proto) {
-                const discountPct = Math.floor(10 + Math.random() * 31);
-                const baseNum = Math.floor(1000 + Math.random() * 9000);
-                const fNum = proto.isDualNumber ? `#${baseNum} / #${baseNum + 1}` : `#${baseNum}`;
-                const randomCondition = Math.floor(20 + Math.random() * 61);
+            if(!proto) return;
 
-                game.marketListings.push({
-                    vehicle: { instanceId: Date.now() + Math.random(), fleetNumber: fNum, name: proto.name, cat: proto.cat, cap: proto.cap, type: proto.type, prop: proto.prop || 'diesel', fuel: 100, condition: randomCondition, dirtiness: Math.floor(Math.random() * 70), price: proto.price, repairFinishTime: 0, faults: [], isComposed: false },
-                    price: Math.floor(proto.price * (randomCondition / 100) * (1 - discountPct / 100)),
-                    discountPct, isPlayer: false
-                });
-            }
+            const discountPct = Math.floor(10 + Math.random() * 31);
+            const baseNum = Math.floor(1000 + Math.random() * 9000);
+            const fNum = proto.isDualNumber ? `#${baseNum} / #${baseNum + 1}` : `#${baseNum}`;
+            const randomCondition = Math.floor(20 + Math.random() * 61);
+            const price = Math.floor(proto.price * (randomCondition / 100) * (1 - discountPct / 100));
+
+            await sbRequest("market_listings", {
+                method: "POST",
+                body: JSON.stringify({
+                    seller_username: "Giełda Krajowa",
+                    vehicle_json: {
+                        instanceId: Date.now() + Math.random(),
+                        fleetNumber: fNum,
+                        name: proto.name,
+                        cat: proto.cat,
+                        cap: proto.cap,
+                        type: proto.type,
+                        prop: proto.prop || 'diesel',
+                        fuel: 100,
+                        condition: randomCondition,
+                        dirtiness: Math.floor(Math.random() * 70),
+                        price: proto.price,
+                        repairFinishTime: 0,
+                        faults: [],
+                        isComposed: false
+                    },
+                    price: price,
+                    discount_pct: discountPct,
+                    is_player: false
+                })
+            });
         }
 
-        function checkAndRefreshMarket() {
-            if(!game.marketListings) game.marketListings = [];
-            while(game.marketListings.length < 6) {
-                generateSingleBotMarketOffer();
-            }
-        }
-
-        function renderFinancesTab() {
+        async function renderFinancesTab() {
             const tbody = document.getElementById("finances-table-body");
             if(!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center opacity-60">Pobieranie firm z sieci...</td></tr>';
+
+            await syncGameToCloud(true);
 
             let allUsersBudgets = [];
-            
-            for (let i = 0; i < localStorage.length; i++){
-                const key = localStorage.key(i);
-                if(key && key.startsWith('polska_transport_user_')) {
-                    try {
-                        const userData = JSON.parse(localStorage.getItem(key));
-                        allUsersBudgets.push({
-                            name: userData.companyName || key.replace('polska_transport_user_', ''),
-                            username: key.replace('polska_transport_user_', ''),
-                            profile: userData.profile === 'urban' ? "Transport Miejski" : "Kolej",
-                            vehicles: userData.vehicles ? userData.vehicles.length : 0,
-                            lines: userData.lines ? userData.lines.length : 0,
-                            money: userData.money || 0
-                        });
-                    } catch(e) {}
+            try {
+                const rows = await sbRequest("companies?select=username,company_name,profile,money,vehicles_count,lines_count&order=money.desc");
+                if (rows && rows.length > 0) {
+                    allUsersBudgets = rows.map(r => ({
+                        name: r.company_name || r.username,
+                        username: r.username,
+                        profile: r.profile === 'urban' ? "Transport Miejski" : "Kolej",
+                        vehicles: r.vehicles_count || 0,
+                        lines: r.lines_count || 0,
+                        money: Number(r.money || 0)
+                    }));
                 }
+            } catch (e) {
+                console.warn("Błąd pobierania listy firm:", e);
             }
 
             if(!allUsersBudgets.some(u => u.username === currentUser)) {
@@ -2294,7 +2562,7 @@
 
             tbody.innerHTML = allUsersBudgets.map(u => `
                 <tr class="hover:bg-slate-500/5 transition">
-                    <td class="p-3 font-bold flex items-center gap-2"><i class="fa-solid fa-user-tie text-amber-600"></i> ${u.name} <span class="text-[10px] opacity-60">(${u.username})</span></td>
+                    <td class="p-3 font-bold flex items-center gap-2"><i class="fa-solid fa-user-tie text-amber-600"></i> ${u.name} ${u.username === currentUser ? '<span class="text-amber-600">(Ty)</span>' : ''} <span class="text-[10px] opacity-60">(${u.username})</span></td>
                     <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold">${u.profile}</span></td>
                     <td class="p-3">${u.vehicles}</td>
                     <td class="p-3">${u.lines}</td>
@@ -2302,29 +2570,62 @@
                 </tr>`).join('');
         }
 
-        function takeLoan(amt, payback) { game.money += amt; game.loans += payback; updateBalance(); updateMapStats(); showToast("Kredyt wzięty pomyślnie."); }
-        
-        function adminExecuteMoneyTransfer(action) {
-            if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
-            const amt = parseInt(document.getElementById("admin-amount").value);
-            if(action === 'add') game.money += amt; else game.money = Math.max(0, game.money - amt);
-            updateBalance(); updateMapStats();
-            showToast("Zaktualizowano saldo.");
+        async function populateAdminTargets() {
+            const sel = document.getElementById("admin-target");
+            if (!sel || !currentUser || currentUser.toLowerCase() !== 'qubax') return;
+            try {
+                const rows = await sbRequest("companies?select=username,company_name");
+                if (rows) {
+                    sel.innerHTML = `<option value="self">Moja Firma (${currentUser})</option>` +
+                        rows.filter(r => r.username !== currentUser).map(r => `<option value="${r.username}">${r.company_name} (${r.username})</option>`).join('');
+                }
+            } catch (e) {}
         }
 
-        function adminCloseUserCompany() {
+        function takeLoan(amt, payback) { game.money += amt; game.loans += payback; updateBalance(); updateMapStats(); showToast("Kredyt wzięty pomyślnie."); }
+        
+        async function adminExecuteMoneyTransfer(action) {
+            if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
+            const amt = parseInt(document.getElementById("admin-amount").value);
+            const target = document.getElementById("admin-target").value;
+            if (isNaN(amt) || amt <= 0) { showToast("Podaj poprawną kwotę!", "error"); return; }
+
+            if (target === "self") {
+                if(action === 'add') game.money += amt; else game.money = Math.max(0, game.money - amt);
+                updateBalance(); updateMapStats();
+                showToast("Zaktualizowano własne saldo.");
+            } else {
+                try {
+                    const rows = await sbRequest(`companies?username=eq.${encodeURIComponent(target)}&select=money`);
+                    if (!rows || rows.length === 0) { showToast("Nie znaleziono firmy w bazie.", "error"); return; }
+                    const currentMoney = Number(rows[0].money || 0);
+                    const updatedMoney = action === 'add' ? currentMoney + amt : Math.max(0, currentMoney - amt);
+                    await sbRequest(`companies?username=eq.${encodeURIComponent(target)}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ money: updatedMoney })
+                    });
+                    showToast(`Zaktualizowano saldo gracza ${target}: ${updatedMoney.toLocaleString()} PLN`);
+                } catch (e) {
+                    showToast("Błąd aktualizacji salda w bazie.", "error");
+                }
+            }
+        }
+
+        async function adminCloseUserCompany() {
             if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
             const targetUser = document.getElementById("admin-close-username").value.trim();
             if(!targetUser) { showToast("Wpisz nick gracza!", "error"); return; }
             if(targetUser.toLowerCase() === 'qubax') { showToast("Nie możesz zamknąć własnej głównej firmy!", "error"); return; }
 
-            if(localStorage.getItem(`polska_transport_user_${targetUser}`)) {
+            try {
+                await sbRequest(`companies?username=eq.${encodeURIComponent(targetUser)}`, { method: "DELETE" });
                 localStorage.removeItem(`polska_transport_user_${targetUser}`);
                 showToast(`Zamknięto i usunięto firmę gracza: ${targetUser}`);
                 document.getElementById("admin-close-username").value = "";
+                populateAdminTargets();
                 renderFinancesTab();
-            } else {
-                showToast("Nie znaleziono gracza o takim nicku.", "error");
+            } catch (e) {
+                showToast("Nie udało się usunąć firmy z bazy.", "error");
             }
         }
 
@@ -2355,11 +2656,12 @@
         function clearMail() {
             game.mail = [];
             updateMailBadge();
+            saveGameToLocalStorage(true);
             showToast("Wyczyszczono skrzynkę pocztową.");
         }
 
         let engineInterval = null;
-        let lastGameMinutesForDirt = 0;
+        let minutesSinceLastDirt = 0;
 
         function startEngine() {
             if(engineInterval) clearInterval(engineInterval);
@@ -2369,11 +2671,10 @@
                 game.lastProcessedRealHour = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
             }
 
-            lastGameMinutesForDirt = game.gameMinutes;
-
             engineInterval = setInterval(() => {
                 game.gameMinutes += 1;
                 if(game.gameMinutes >= 1440) game.gameMinutes = 0;
+                minutesSinceLastDirt += 1;
                 
                 const h = Math.floor(game.gameMinutes / 60), m = game.gameMinutes % 60;
                 const clockEl = document.getElementById("game-clock");
@@ -2393,8 +2694,8 @@
                 updateVehicleDelays();
                 renderLines();
 
-                if ((game.gameMinutes - lastGameMinutesForDirt) >= 720) {
-                    lastGameMinutesForDirt = game.gameMinutes;
+                if (minutesSinceLastDirt >= 720) {
+                    minutesSinceLastDirt = 0;
                     game.vehicles.forEach(v => {
                         if (v.lineId && (!v.repairFinishTime || v.repairFinishTime <= Date.now())) {
                             v.dirtiness = Math.min(100, (v.dirtiness || 0) + Math.floor(5 + Math.random() * 15));
@@ -2405,7 +2706,7 @@
                 const nowDate = new Date();
                 const currentRealHourKey = `${nowDate.getFullYear()}-${nowDate.getMonth()}-${nowDate.getDate()}-${nowDate.getHours()}`;
                 
-                if (nowDate.getMinutes() === 0 && nowDate.getSeconds() === 0 && currentRealHourKey !== game.lastProcessedRealHour) {
+                if (currentRealHourKey !== game.lastProcessedRealHour) {
                     game.lastProcessedRealHour = currentRealHourKey;
                     let realHourInc = 0;
                     let realHourExp = 0;
@@ -2493,8 +2794,7 @@
                     game.unimogWarningTimer = 0;
                 }
 
-                checkAndRefreshMarket();
-                saveGameToLocalStorage();
+                saveGameToLocalStorage(false);
             }, 1000);
         }
 
@@ -2502,13 +2802,13 @@
             document.getElementById("fin-tickets-income").innerText = (game.lastTicketIncome || 0).toLocaleString() + " PLN / ostatnia godzina realna";
         }
 
-        function updateBalance() {
+        function updateBalance(shouldSave = true) {
             document.getElementById("company-balance").innerText = Math.floor(game.money).toLocaleString() + " PLN";
             const finBal = document.getElementById("fin-balance");
             const finLoans = document.getElementById("fin-loans");
             if(finBal) finBal.innerText = Math.floor(game.money).toLocaleString() + " PLN";
             if(finLoans) finLoans.innerText = game.loans.toLocaleString() + " PLN";
-            saveGameToLocalStorage();
+            if(shouldSave) saveGameToLocalStorage(true);
         }
 
         function downloadSaveFile() {
@@ -2519,9 +2819,14 @@
             document.body.appendChild(dl); dl.click(); dl.remove();
         }
 
-        function resetGame() { 
-            if(confirm("Czy na pewno chcesz zresetować postęp tego konta?")) { 
-                if(currentUser) localStorage.removeItem(`polska_transport_user_${currentUser}`);
+        async function resetGame() { 
+            if(confirm("Czy na pewno chcesz zresetować postęp tego konta (również w chmurze)?")) { 
+                if(currentUser) {
+                    localStorage.removeItem(`polska_transport_user_${currentUser}`);
+                    try {
+                        await sbRequest(`companies?username=eq.${encodeURIComponent(currentUser)}`, { method: "DELETE" });
+                    } catch (e) {}
+                }
                 localStorage.removeItem('polska_transport_active_user');
                 location.reload(); 
             } 
