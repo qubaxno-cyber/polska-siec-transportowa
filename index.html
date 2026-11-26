@@ -2523,15 +2523,16 @@ async function loadUserFromCloud(username) {
             });
         }
 
-        async function renderFinancesTab() {
+async function renderFinancesTab() {
             const tbody = document.getElementById("finances-table-body");
             if(!tbody) return;
             tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center opacity-60">Pobieranie firm z sieci...</td></tr>';
 
-            await syncGameToCloud(true);
-
+            const cacheKey = "polska_transport_all_companies_cache";
             let allUsersBudgets = [];
+
             try {
+                await syncGameToCloud(true);
                 const rows = await sbRequest("companies?select=username,company_name,profile,money,vehicles_count,lines_count&order=money.desc");
                 if (rows && rows.length > 0) {
                     allUsersBudgets = rows.map(r => ({
@@ -2542,21 +2543,38 @@ async function loadUserFromCloud(username) {
                         lines: r.lines_count || 0,
                         money: Number(r.money || 0)
                     }));
+                    try {
+                        localStorage.setItem(cacheKey, JSON.stringify(allUsersBudgets));
+                    } catch (e) {}
                 }
             } catch (e) {
-                console.warn("Błąd pobierania listy firm:", e);
+                console.warn("Offline lub błąd pobierania listy firm — używam cache:", e);
+                try {
+                    const cached = localStorage.getItem(cacheKey);
+                    if (cached) {
+                        allUsersBudgets = JSON.parse(cached);
+                    }
+                } catch (err) {}
             }
 
-            if(!allUsersBudgets.some(u => u.username === currentUser)) {
-                allUsersBudgets.push({
-                    name: game.companyName + " (Ty)",
+            if (currentUser) {
+                const myEntry = {
+                    name: game.companyName || currentUser,
                     username: currentUser,
                     profile: game.profile === 'urban' ? "Transport Miejski" : "Kolej",
-                    vehicles: game.vehicles.length,
-                    lines: game.lines.length,
+                    vehicles: game.vehicles ? game.vehicles.length : 0,
+                    lines: game.lines ? game.lines.length : 0,
                     money: game.money
-                });
+                };
+                const existingIdx = allUsersBudgets.findIndex(u => u.username === currentUser);
+                if (existingIdx >= 0) {
+                    allUsersBudgets[existingIdx] = myEntry;
+                } else {
+                    allUsersBudgets.push(myEntry);
+                }
             }
+
+            allUsersBudgets.sort((a, b) => Number(b.money || 0) - Number(a.money || 0));
 
             tbody.innerHTML = allUsersBudgets.map(u => `
                 <tr class="hover:bg-slate-500/5 transition">
