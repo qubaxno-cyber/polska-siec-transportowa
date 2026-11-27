@@ -530,13 +530,7 @@
         </div>
     </div>
 </div>
-```
 
----
-
-### A w sekcji JavaScript (`<script>`):
-Wyszukaj po prostu słowo:
-```javascript
 function adminExecuteMoneyTransfer
 
             <div id="section-expansion" class="tab-content hidden space-y-6">
@@ -2675,19 +2669,13 @@ async function adminExecuteMoneyTransfer(action) {
             const currentMoney = Number(rows[0].money || 0);
             let updatedMoney = 0;
             
-            if (action === 'add') {
-                updatedMoney = currentMoney + amt;
-            } else if (action === 'sub') {
-                updatedMoney = Math.max(0, currentMoney - amt);
-            } else if (action === 'zero') {
-                updatedMoney = 0; // Całkowite zerowanie
-            }
+            if (action === 'add') updatedMoney = currentMoney + amt;
+            else if (action === 'sub') updatedMoney = Math.max(0, currentMoney - amt);
+            else if (action === 'zero') updatedMoney = 0;
             
             let targetState = rows[0].state_json || {};
             targetState.money = updatedMoney;
-            if(updatedMoney === 0) {
-                targetState.lastTicketIncome = 0; // zerujemy też bufor zysków z biletów
-            }
+            if(updatedMoney === 0) targetState.lastTicketIncome = 0;
 
             await sbRequest(`companies?username=eq.${encodeURIComponent(target)}`, {
                 method: "PATCH",
@@ -2697,30 +2685,102 @@ async function adminExecuteMoneyTransfer(action) {
                 })
             });
             
-            showToast(action === 'zero' ? `Całkowicie wyzerowano konto gracza ${target}!` : `Zaktualizowano saldo gracza ${target}: ${updatedMoney.toLocaleString()} PLN`);
+            showToast(action === 'zero' ? `Wyzerowano konto gracza ${target}!` : `Zaktualizowano saldo gracza ${target}: ${updatedMoney.toLocaleString()} PLN`);
         } catch (e) {
             showToast("Błąd aktualizacji salda w bazie.", "error");
         }
     }
 }
 
-        async function adminCloseUserCompany() {
-            if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
-            const targetUser = document.getElementById("admin-close-username").value.trim();
-            if(!targetUser) { showToast("Wpisz nick gracza!", "error"); return; }
-            if(targetUser.toLowerCase() === 'qubax') { showToast("Nie możesz zamknąć własnej głównej firmy!", "error"); return; }
+async function adminInspectUserFleet() {
+    if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
+    const targetUser = document.getElementById("admin-inspect-username").value.trim();
+    const container = document.getElementById("admin-inspect-result");
+    if(!targetUser) { showToast("Wpisz nick gracza!", "error"); return; }
 
-            try {
-                await sbRequest(`companies?username=eq.${encodeURIComponent(targetUser)}`, { method: "DELETE" });
-                localStorage.removeItem(`polska_transport_user_${targetUser}`);
-                showToast(`Zamknięto i usunięto firmę gracza: ${targetUser}`);
-                document.getElementById("admin-close-username").value = "";
-                populateAdminTargets();
-                renderFinancesTab();
-            } catch (e) {
-                showToast("Nie udało się usunąć firmy z bazy.", "error");
-            }
+    try {
+        const rows = await sbRequest(`companies?username=eq.${encodeURIComponent(targetUser)}&select=state_json`);
+        if (!rows || rows.length === 0 || !rows[0].state_json) {
+            container.innerHTML = `<span class="text-rose-400">Nie znaleziono gracza lub brak danych.</span>`;
+            return;
         }
+        const st = rows[0].state_json;
+        const vehicles = st.vehicles || [];
+        const lines = st.lines || [];
+
+        container.innerHTML = `
+            <div class="font-bold text-amber-300">Firma: ${st.companyName || targetUser} (Pojazdów: ${vehicles.length}, Linii: ${lines.length})</div>
+            <div class="space-y-1">
+                <b>Pojazdy:</b>
+                ${vehicles.length === 0 ? '<div class="opacity-50">Brak pojazdów</div>' : vehicles.map(v => `<div class="flex justify-between items-center bg-slate-800 p-1.5 rounded"><span>${v.fleetNumber} - ${v.name}</span> <button onclick="adminRemoveUserVehicle('${targetUser}', ${v.instanceId})" class="px-2 py-0.5 bg-rose-600 text-white rounded text-[10px]">Usuń</button></div>`).join('')}
+            </div>
+            <div class="space-y-1 pt-2">
+                <b>Linie:</b>
+                ${lines.length === 0 ? '<div class="opacity-50">Brak linii</div>' : lines.map(l => `<div class="flex justify-between items-center bg-slate-800 p-1.5 rounded"><span>Linia ${l.number}: ${l.route}</span> <button onclick="adminRemoveUserLine('${targetUser}', ${l.id})" class="px-2 py-0.5 bg-rose-600 text-white rounded text-[10px]">Usuń</button></div>`).join('')}
+            </div>
+        `;
+    } catch (e) {
+        container.innerHTML = `<span class="text-rose-400">Błąd pobierania danych z bazy.</span>`;
+    }
+}
+
+async function adminRemoveUserVehicle(targetUser, instanceId) {
+    if(currentUser.toLowerCase() !== 'qubax') return;
+    try {
+        const rows = await sbRequest(`companies?username=eq.${encodeURIComponent(targetUser)}&select=state_json`);
+        if (!rows || rows.length === 0) return;
+        let st = rows[0].state_json;
+        st.vehicles = (st.vehicles || []).filter(v => v.instanceId !== instanceId);
+        
+        await sbRequest(`companies?username=eq.${encodeURIComponent(targetUser)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ vehicles_count: st.vehicles.length, state_json: st })
+        });
+        showToast("Usunięto pojazd gracza.");
+        adminInspectUserFleet();
+    } catch (e) {
+        showToast("Błąd usuwania pojazdu.", "error");
+    }
+}
+
+async function adminRemoveUserLine(targetUser, lineId) {
+    if(currentUser.toLowerCase() !== 'qubax') return;
+    try {
+        const rows = await sbRequest(`companies?username=eq.${encodeURIComponent(targetUser)}&select=state_json`);
+        if (!rows || rows.length === 0) return;
+        let st = rows[0].state_json;
+        st.lines = (st.lines || []).filter(l => l.id !== lineId);
+        
+        await sbRequest(`companies?username=eq.${encodeURIComponent(targetUser)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ lines_count: st.lines.length, state_json: st })
+        });
+        showToast("Usunięto linię gracza.");
+        adminInspectUserFleet();
+    } catch (e) {
+        showToast("Błąd usuwania linii.", "error");
+    }
+}
+
+async function adminCloseUserCompany() {
+    if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
+    const targetUser = document.getElementById("admin-close-username").value.trim();
+    if(!targetUser) { showToast("Wpisz nick gracza!", "error"); return; }
+    if(targetUser.toLowerCase() === 'qubax') { showToast("Nie możesz zamknąć własnej głównej firmy!", "error"); return; }
+
+    try {
+        await sbRequest(`companies?username=eq.${encodeURIComponent(targetUser)}`, { method: "DELETE" });
+        localStorage.removeItem(`polska_transport_user_${targetUser}`);
+        showToast(`Zamknięto i usunięto firmę gracza: ${targetUser}`);
+        document.getElementById("admin-close-username").value = "";
+        populateAdminTargets();
+        renderFinancesTab();
+    } catch (e) {
+        showToast("Nie udało się usunąć firmy z bazy.", "error");
+    }
+}
+
+Po wklejeniu zapisz plik (`Ctrl + S`) i odśwież stronę z grą (`Ctrl + F5`). Teraz masz do dyspozycji przycisk **Wyzeruj (0)** oraz podgląd jego floty, z którego możesz mu jednym kliknięciem usunąć każdy pojazd lub linię!
 
         function buyCoachLicense() { game.money -= 1300000; updateBalance(); updateMapStats(); showToast("Licencja kupiona."); }
         function applyForSubsidy() { setTimeout(() => { game.money += 100000; updateBalance(); updateMapStats(); showToast("Dotacja przyznana!"); }, 3000); showToast("Wniosek wysłany."); }
