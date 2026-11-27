@@ -1416,27 +1416,50 @@ async function loadUserFromCloud(username) {
             }).join('');
         }
 
-        function getVehicleFaults(v) {
+function getVehicleFaults(v) {
             if (v.condition >= 95) return ["• Brak usterek, pojazd w pełni sprawny."];
 
-            const lightFaults = ["Nie działające światła", "Nie działające kierunkowskazy", "Nie działające wycieraczki", "Obluzowany fotel kierowcy", "Nie trzymające się fotele pasażerskie", "Obluzowane poręcze"];
-            const mediumFaults = ["Zacinające się drzwi", "Nie działająca klimatyzacja", "Nie działające ogrzewanie", "Zepsute okna"];
-            const heavyFaults = [];
+            const electricalFaults = [
+                "Awaia w instalacji wewnętrznej SIP (brak zapowiedzi)",
+                "Awaria kasowników biletowych (brak możliwości skasowania biletów)",
+                "Przepalone oświetlenie kabiny pasażerskiej",
+                "Awaria panelu sterowania ogrzewaniem",
+                "Zwarcie w obwodzie drzwi elektrycznych",
+                "Rozładowujący się alternator / brak ładowania akumulatorów"
+            ];
+            const pneumaticFaults = [
+                "Nieszczelność układu pneumatycznego (ucieka powietrze z zawieszenia)",
+                "Zamarzający zawór osuszacza powietrza",
+                "Problem z poziomowaniem nadwozia na przystankach (przyklęk)",
+                "Zablokowany zawór sterowania drzwiami"
+            ];
+            const mechanicalFaults = [
+                "Luz na drążkach kierowniczych",
+                "Zużyte okładziny hamulcowe (piszczenie przy hamowaniu)",
+                "Przegrzewający się układ chłodzenia silnika",
+                "Wibracje na układzie prądnice / wał napędowy",
+                "Wyciek płynu eksploatacyjnego z komory silnika"
+            ];
+            const tractionFaults = [
+                "Iskrzenie i podskakiwanie ślizgaka odbieraka prądu (patyka)",
+                "Przepalona wkładka grafitowa pantografu",
+                "Przegrzewający się rozruch oporowy / falownik",
+                "Zablokowany zwrotak / sterownik napędu"
+            ];
+
+            let pool = [...electricalFaults, ...pneumaticFaults, ...mechanicalFaults];
             if (v.type === 'tram' || v.type === 'trolley' || v.type === 'rail' || v.type === 'metro') {
-                heavyFaults.push("Zepsuty odbierak prądu", "Iskrzenia odbieraka");
+                pool = pool.concat(tractionFaults);
             }
-            if (v.type === 'bus' || v.type === 'coach' || v.type === 'trolley') {
-                heavyFaults.push("Blokująca się skrzynia biegów");
-            }
-            heavyFaults.push("Zepsuty silnik");
 
+            // Losujemy 2 do 3 różnych awarii w zależności od stopnia zużycia
+            let count = v.condition < 40 ? 3 : (v.condition < 70 ? 2 : 1);
             let selected = [];
-            if (v.condition < 85) selected.push(lightFaults[Math.floor(Math.random() * lightFaults.length)]);
-            if (v.condition < 60) selected.push(mediumFaults[Math.floor(Math.random() * mediumFaults.length)]);
-            if (v.condition < 35 && heavyFaults.length > 0) selected.push(heavyFaults[Math.floor(Math.random() * heavyFaults.length)]);
+            for(let i = 0; i < count; i++) {
+                const randomItem = pool[Math.floor(Math.random() * pool.length)];
+                if(!selected.includes(randomItem)) selected.push(randomItem);
+            }
 
-            selected = [...new Set(selected)];
-            if(selected.length === 0) selected.push("• Drobne zużycie eksploatacyjne podzespołów");
             return selected.map(f => `• ${f}`);
         }
 
@@ -2485,16 +2508,19 @@ async function loadUserFromCloud(username) {
             }
         }
 
-        async function generateSingleBotMarketOfferCloud() {
+async function generateSingleBotMarketOfferCloud() {
             const cleanCatalog = fullVehicleCatalog.filter(v => !v.type.startsWith('tech_'));
             const proto = cleanCatalog[Math.floor(Math.random() * cleanCatalog.length)];
             if(!proto) return;
 
-            const discountPct = Math.floor(10 + Math.random() * 31);
+            const randomCondition = Math.floor(20 + Math.random() * 61); // stan od 20% do 80%
+            // Cena bazowa zależna od stanu, a następnie uczciwy rabat od 10% do 40% wartości rynkowej aktualnego stanu
+            const valueBasedOnCondition = proto.price * (randomCondition / 100);
+            const discountPct = Math.floor(10 + Math.random() * 31); 
+            const price = Math.max(15000, Math.floor(valueBasedOnCondition * (1 - discountPct / 100)));
+
             const baseNum = Math.floor(1000 + Math.random() * 9000);
             const fNum = proto.isDualNumber ? `#${baseNum} / #${baseNum + 1}` : `#${baseNum}`;
-            const randomCondition = Math.floor(20 + Math.random() * 61);
-            const price = Math.floor(proto.price * (randomCondition / 100) * (1 - discountPct / 100));
 
             await sbRequest("market_listings", {
                 method: "POST",
@@ -2600,15 +2626,20 @@ async function renderFinancesTab() {
 
         function takeLoan(amt, payback) { game.money += amt; game.loans += payback; updateBalance(); updateMapStats(); showToast("Kredyt wzięty pomyślnie."); }
         
-        async function adminExecuteMoneyTransfer(action) {
+async function adminExecuteMoneyTransfer(action) {
             if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
-            const amt = parseInt(document.getElementById("admin-amount").value);
+            const amt = parseInt(document.getElementById("admin-amount").value, 10);
             const target = document.getElementById("admin-target").value;
             if (isNaN(amt) || amt <= 0) { showToast("Podaj poprawną kwotę!", "error"); return; }
 
             if (target === "self") {
-                if(action === 'add') game.money += amt; else game.money = Math.max(0, game.money - amt);
-                updateBalance(); updateMapStats();
+                if(action === 'add') {
+                    game.money += amt;
+                } else {
+                    game.money = Math.max(0, game.money - amt);
+                }
+                updateBalance(true);
+                updateMapStats();
                 showToast("Zaktualizowano własne saldo.");
             } else {
                 try {
