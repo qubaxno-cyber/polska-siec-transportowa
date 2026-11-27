@@ -846,25 +846,33 @@ function adminExecuteMoneyTransfer
 
         let map, selectedMarker = null;
 
-        window.onload = async function() {
+window.onload = async function() {
             const activeUser = localStorage.getItem('polska_transport_active_user');
             if(activeUser) {
                 currentUser = activeUser;
-                const loadedFromCloud = await loadUserFromCloud(activeUser);
-                if (loadedFromCloud) {
-                    launchMainApp();
-                    return;
-                }
+                
+                // 1. Najpierw sprawdzamy zapis lokalny – dzięki temu autolog działa natychmiastowo
                 const saved = localStorage.getItem(`polska_transport_user_${activeUser}`);
                 if(saved) {
                     try {
                         game = JSON.parse(saved);
                         launchMainApp();
+                        
+                        // W tle próbujemy pobrać najnowsze dane z chmury bez blokowania ekranu
+                        loadUserFromCloud(activeUser).catch(() => {});
                         return;
                     } catch(e) {}
                 }
+                
+                // 2. Jeśli nie ma lokalnego, próbujemy pobrać bezpośrednio z chmury
+                const loadedFromCloud = await loadUserFromCloud(activeUser);
+                if (loadedFromCloud) {
+                    launchMainApp();
+                    return;
+                }
             }
 
+            // Jeśli brak aktywnego użytkownika, pokazujemy ekran logowania / wyboru konta
             checkSavedAccountsOnDevice();
             renderCitySelection();
             renderTicketSettings();
