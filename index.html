@@ -500,29 +500,44 @@
                 </div>
 
 <div id="admin-panel-container" class="hidden bg-gradient-to-r from-slate-900 to-amber-950 text-white p-6 rounded-2xl shadow-xl space-y-6 border border-amber-500/35">
-                    <h3 class="font-extrabold text-sm text-amber-300"><i class="fa-solid fa-shield-halved"></i> Panel Administratora (Tylko dla Qubax)</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs items-center">
-                        <select id="admin-target" class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none"><option value="self">Moja Firma</option></select>
-                        <input type="number" id="admin-amount" value="1000000" class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none" placeholder="Kwota PLN">
-                        <button onclick="adminExecuteMoneyTransfer('add')" class="py-2.5 bg-emerald-600 text-white font-extrabold rounded-xl shadow">Dodaj środki</button>
-                        <button onclick="adminExecuteMoneyTransfer('sub')" class="py-2.5 bg-rose-600 text-white font-extrabold rounded-xl shadow">Zabierz środki</button>
-                    </div>
-                    <div class="pt-3 border-t border-slate-700 space-y-2">
-                        <label class="block font-bold text-xs text-amber-300">Podgląd i zarządzanie firmą gracza:</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="admin-inspect-username" placeholder="Wpisz nick gracza..." class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none flex-grow text-xs">
-                            <button onclick="adminInspectUserFleet()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow text-xs">Pokaż firmę</button>
-                        </div>
-                        <div id="admin-inspect-result" class="text-xs space-y-2 max-h-48 overflow-y-auto p-2 bg-slate-900/50 rounded-xl"></div>
-                    </div>
-                    <div class="pt-3 border-t border-slate-700 space-y-2">
-                        <label class="block font-bold text-xs text-rose-400">Zarządzanie kontami / Zamykanie firm w sieci:</label>
-                        <div class="flex gap-2">
-                            <input type="text" id="admin-close-username" placeholder="Wpisz nick gracza do usunięcia..." class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none flex-grow text-xs">
-                            <button onclick="adminCloseUserCompany()" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow text-xs">Zamknij / Usuń firmę</button>
-                        </div>
-                    </div>
-                </div>
+    <h3 class="font-extrabold text-sm text-amber-300"><i class="fa-solid fa-shield-halved"></i> Panel Administratora (Tylko dla Qubax)</h3>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs items-center">
+        <select id="admin-target" class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none"><option value="self">Moja Firma</option></select>
+        <input type="number" id="admin-amount" value="1000000" class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none" placeholder="Kwota PLN">
+        <div class="flex gap-2">
+            <button onclick="adminExecuteMoneyTransfer('add')" class="flex-1 py-2.5 bg-emerald-600 text-white font-extrabold rounded-xl shadow text-xs">Dodaj</button>
+            <button onclick="adminExecuteMoneyTransfer('sub')" class="flex-1 py-2.5 bg-rose-600 text-white font-extrabold rounded-xl shadow text-xs">Zabierz</button>
+            <button onclick="adminExecuteMoneyTransfer('zero')" class="flex-1 py-2.5 bg-purple-600 text-white font-extrabold rounded-xl shadow text-xs">Wyzeruj (0)</button>
+        </div>
+    </div>
+
+    <!-- Podgląd i zarządzanie firmą gracza -->
+    <div class="pt-3 border-t border-slate-700 space-y-2">
+        <label class="block font-bold text-xs text-amber-300">Podgląd i zarządzanie firmą gracza:</label>
+        <div class="flex gap-2">
+            <input type="text" id="admin-inspect-username" placeholder="Wpisz nick gracza..." class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none flex-grow text-xs">
+            <button onclick="adminInspectUserFleet()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow text-xs">Pokaż firmę</button>
+        </div>
+        <div id="admin-inspect-result" class="text-xs space-y-2 max-h-48 overflow-y-auto p-2 bg-slate-900/50 rounded-xl"></div>
+    </div>
+
+    <div class="pt-3 border-t border-slate-700 space-y-2">
+        <label class="block font-bold text-xs text-rose-400">Zarządzanie kontami / Zamykanie firm w sieci:</label>
+        <div class="flex gap-2">
+            <input type="text" id="admin-close-username" placeholder="Wpisz nick gracza do usunięcia..." class="p-2.5 border border-slate-700 rounded-xl bg-slate-900 text-white outline-none flex-grow text-xs">
+            <button onclick="adminCloseUserCompany()" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow text-xs">Zamknij / Usuń firmę</button>
+        </div>
+    </div>
+</div>
+```
+
+---
+
+### A w sekcji JavaScript (`<script>`):
+Wyszukaj po prostu słowo:
+```javascript
+function adminExecuteMoneyTransfer
 
             <div id="section-expansion" class="tab-content hidden space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2635,35 +2650,45 @@ async function renderFinancesTab() {
         
 async function adminExecuteMoneyTransfer(action) {
     if(currentUser.toLowerCase() !== 'qubax') { showToast("Brak uprawnień administratora!", "error"); return; }
-    const amt = parseInt(document.getElementById("admin-amount").value, 10);
     const target = document.getElementById("admin-target").value;
-    if (isNaN(amt) || amt <= 0) { showToast("Podaj poprawną kwotę!", "error"); return; }
+    let amt = parseInt(document.getElementById("admin-amount").value, 10);
+    
+    if (action !== 'zero' && (isNaN(amt) || amt <= 0)) { 
+        showToast("Podaj poprawną kwotę!", "error"); 
+        return; 
+    }
 
     if (target === "self") {
-        if(action === 'add') {
-            game.money += amt;
-        } else {
-            game.money = Math.max(0, game.money - amt);
-        }
+        if(action === 'add') game.money += amt;
+        else if(action === 'sub') game.money = Math.max(0, game.money - amt);
+        else if(action === 'zero') game.money = 0;
+
         updateBalance(false);
         updateMapStats();
-        
         await syncGameToCloud(true);
-        showToast("Zaktualizowano własne saldo i zapisano w sieci.");
+        showToast("Zaktualizowano własne saldo.");
     } else {
         try {
-            // Pobieramy zarówno 'money', jak i 'state_json' gracza docelowego
             const rows = await sbRequest(`companies?username=eq.${encodeURIComponent(target)}&select=money,state_json`);
             if (!rows || rows.length === 0) { showToast("Nie znaleziono firmy w bazie.", "error"); return; }
             
             const currentMoney = Number(rows[0].money || 0);
-            const updatedMoney = action === 'add' ? currentMoney + amt : Math.max(0, currentMoney - amt);
+            let updatedMoney = 0;
             
-            // Aktualizujemy saldo w obiekcie stanu gry gracza
+            if (action === 'add') {
+                updatedMoney = currentMoney + amt;
+            } else if (action === 'sub') {
+                updatedMoney = Math.max(0, currentMoney - amt);
+            } else if (action === 'zero') {
+                updatedMoney = 0; // Całkowite zerowanie
+            }
+            
             let targetState = rows[0].state_json || {};
             targetState.money = updatedMoney;
+            if(updatedMoney === 0) {
+                targetState.lastTicketIncome = 0; // zerujemy też bufor zysków z biletów
+            }
 
-            // Zapisujemy zmianę w obu miejscach w bazie danych
             await sbRequest(`companies?username=eq.${encodeURIComponent(target)}`, {
                 method: "PATCH",
                 body: JSON.stringify({ 
@@ -2672,7 +2697,7 @@ async function adminExecuteMoneyTransfer(action) {
                 })
             });
             
-            showToast(`Zaktualizowano saldo gracza ${target}: ${updatedMoney.toLocaleString()} PLN`);
+            showToast(action === 'zero' ? `Całkowicie wyzerowano konto gracza ${target}!` : `Zaktualizowano saldo gracza ${target}: ${updatedMoney.toLocaleString()} PLN`);
         } catch (e) {
             showToast("Błąd aktualizacji salda w bazie.", "error");
         }
